@@ -156,11 +156,7 @@ export function AdminDashboard() {
             items={[
               { label: "Pets & Owners", to: "/admin/A6", icon: "pet" },
               { label: "Appointments", to: "/admin/A3", icon: "calendar" },
-              {
-                label: "Follow-up Checkups",
-                to: "/admin/A5?tab=followups",
-                icon: "record",
-              },
+              { label: "Vaccinations", to: "/admin/A7", icon: "record" },
               { label: "Medicines", to: "/admin/A8", icon: "pill" },
               { label: "Consultations", to: "/admin/A5", icon: "check" },
               { label: "Reports", to: "/admin/A12", icon: "report" },
@@ -868,7 +864,7 @@ export function Vaccinations() {
     { title: "Owner", render: (_, { owner }) => owner?.name },
     { title: "Vaccine", dataIndex: "vaccine" },
     { title: "Date given", dataIndex: "dateGiven", render: formatDate },
-    { title: "Next due date", dataIndex: "nextDueDate", render: formatDate },
+    { title: "Next date given", dataIndex: "nextDueDate", render: formatDate },
     {
       title: "Action",
       render: (_, { pet }) => (
@@ -898,20 +894,19 @@ export function Vaccinations() {
     <>
       <PageHeading title="Vaccinations" />
       <RequestState {...records} retry={records.refresh}>
-        <Panel title="Per-pet vaccination records">
-          <DataTable data={records.data} columns={columns} />
-        </Panel>
-        <Panel title="Coming due">
+        <Panel title="Upcoming due">
           <DataTable
-            data={records.data.filter(
-              ({ nextDueDate }) =>
-                new Date(nextDueDate) <= new Date(Date.now() + 30 * 86400000),
+            data={[...records.data].sort(
+              (a, b) => new Date(a.nextDueDate) - new Date(b.nextDueDate),
             )}
             columns={columns}
           />
         </Panel>
       </RequestState>
-      <Note>Next due dates feed owner vaccination reminders.</Note>
+      <Note>
+        Completing a vaccination visit books the next due date for the owner and
+        sends them a notification.
+      </Note>
       <Modal
         open={!!editing}
         title="Edit vaccination record"
@@ -941,7 +936,7 @@ export function Vaccinations() {
           </Form.Item>
           <Form.Item
             name="nextDueDate"
-            label="Next due date"
+            label="Next date given"
             dependencies={["dateGiven"]}
             rules={[
               { required: true },
@@ -950,7 +945,7 @@ export function Vaccinations() {
                   value > getFieldValue("dateGiven")
                     ? Promise.resolve()
                     : Promise.reject(
-                        new Error("Next due date must follow date given."),
+                        new Error("Next date given must follow date given."),
                       ),
               }),
             ]}

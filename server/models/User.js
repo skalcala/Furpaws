@@ -18,6 +18,7 @@ const UserSchema = new mongoose.Schema(
       match: /^(09\d{9}|\+639\d{9})$/,
     },
     address: text(false, 300),
+    profilePicture: text(false, 400000),
     passwordHash: {
       type: String,
       required: function () {

@@ -129,6 +129,7 @@ test("Clinic flow, authorization, capacity, retired prescription rejection, and 
           appointment: id,
           weight: 4,
           diagnosis: "Test",
+          symptoms: "Reported symptoms",
           treatment: "Test",
         },
       })
@@ -168,6 +169,7 @@ test("Clinic flow, authorization, capacity, retired prescription rejection, and 
     appointment: id,
     weight: 4.1,
     diagnosis: "Routine exam",
+    symptoms: "Reported symptoms",
     treatment: "Monitor",
     notes: "Follow care instructions",
   };

@@ -36,6 +36,7 @@ export function Panel({ title, children, action, className = "" }) {
   );
 }
 export function Note({ children, error = false }) {
+  if (!error) return null;
   return (
     <div
       className={`note ${error ? "error-note" : ""}`}

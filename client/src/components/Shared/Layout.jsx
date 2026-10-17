@@ -10,7 +10,6 @@ import {
   CreditCardOutlined,
   DashboardOutlined,
   ExperimentOutlined,
-  FileTextOutlined,
   HeartOutlined,
   HistoryOutlined,
   MedicineBoxOutlined,
@@ -40,7 +39,6 @@ export const ownerNavigation = [
   ["U3", "My Pets"],
   ["U4", "Book Appointment"],
   ["U9", "My Appointments"],
-  ["U2", "Settings"],
 ];
 export const adminNavigation = [
   ["A1", "Dashboard"],
@@ -49,7 +47,6 @@ export const adminNavigation = [
   ["A4", "Today’s Queue"],
   ["A6", "Pets & Owners"],
   ["A5", "Consultations"],
-  ["A5?tab=followups", "Follow-up Checkups"],
   ["A8", "Medicine Inventory"],
   ["A7", "Vaccinations"],
   ["A9", "Services"],
@@ -73,7 +70,6 @@ const navigationIcons = {
   A4: ClockCircleOutlined,
   A6: TeamOutlined,
   A5: SolutionOutlined,
-  "A5?tab=followups": FileTextOutlined,
   A8: MedicineBoxOutlined,
   A7: ExperimentOutlined,
   A9: AppstoreOutlined,
@@ -101,7 +97,7 @@ export default function Layout() {
   const isAdmin = user.role === "ADMIN";
   const root = isAdmin ? "/admin/" : "/owner/";
   const navigate = useNavigate();
-  const { pathname, search } = useLocation();
+  const { pathname } = useLocation();
   const [mobile, setMobile] = useState(false);
   const [query, setQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -141,11 +137,7 @@ export default function Layout() {
       <nav className="sidebar-navigation" aria-label="Main navigation">
         {navigation.map(([id, label]) => {
           const Icon = navigationIcons[id];
-          const active =
-            id === "A5?tab=followups"
-              ? search.includes("tab=followups") && parentScreen === "A5"
-              : id === parentScreen &&
-                !(id === "A5" && search.includes("tab=followups"));
+          const active = id === parentScreen;
           const groupStart =
             isAdmin && ["A6", "A9", "A15", "settings"].includes(id);
           return (
@@ -221,6 +213,7 @@ export default function Layout() {
                 admin={isAdmin}
                 compact
                 inbox={isAdmin}
+                onOpen={() => setNotificationsOpen(false)}
               />
               <Link
                 className="notification-view-all"
@@ -280,7 +273,7 @@ export default function Layout() {
             aria-expanded={accountMenuOpen}
           >
             <span className="header-account-avatar">
-              <UserOutlined aria-hidden="true" />
+              {user.profilePicture ? <img src={user.profilePicture} alt="Your profile" /> : <UserOutlined aria-hidden="true" />}
             </span>
             <span className="header-account-name">
               <strong>{user.name}</strong>

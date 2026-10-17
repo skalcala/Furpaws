@@ -51,8 +51,7 @@ const services = [
 ];
 const links = [
   ["#home", "Home"],
-  ["#services", "Our services"],
-  ["#about", "About us"],
+  ["#care", "About & services"],
   ["#how-it-works", "How it works"],
 ];
 export default function PublicLanding() {
@@ -86,13 +85,12 @@ export default function PublicLanding() {
               </a>
             ))}
           </nav>
-          <Link
-            className="button primary public-header-cta"
-            to={user ? portal : "/login"}
-          >
-            {user ? "My portal" : "Sign in"}
-            <ArrowRightOutlined aria-hidden="true" />
-          </Link>
+          {user && (
+            <Link className="button primary public-header-cta" to={portal}>
+              My portal
+              <ArrowRightOutlined aria-hidden="true" />
+            </Link>
+          )}
           <button
             className="public-menu-button"
             aria-label={menu ? "Close menu" : "Open menu"}
@@ -125,14 +123,9 @@ export default function PublicLanding() {
                 They’re family. From their first checkup to every follow-up,
                 make time for the care your best friend deserves.
               </p>
-              <Link
-                className="button public-hero-button"
-                to="/login?mode=register"
-              >
-                <CalendarOutlined aria-hidden="true" /> Need an appointment?{" "}
-                <strong>Sign up now</strong>
-                <ArrowRightOutlined aria-hidden="true" />
-              </Link>
+              <a className="button public-hero-button" href="#care">
+                Explore our care <ArrowRightOutlined aria-hidden="true" />
+              </a>
               <span className="public-hero-caption">
                 <CheckCircleOutlined aria-hidden="true" /> Book online. Get
                 clinic approval. Come in for care.
@@ -158,7 +151,50 @@ export default function PublicLanding() {
             <DashboardIcon name="pet" />
           </span>
         </section>
-        <section className="public-section" id="services">
+        <section className="public-section" id="care">
+          <div className="public-container public-about-grid">
+            <div className="public-about-image">
+              <img
+                src="/assets/stock/vet-magnific.jpg"
+                alt="Gentle care for a dog during a veterinary consultation"
+                loading="lazy"
+              />
+              <div className="public-photo-caption">
+                <HeartOutlined aria-hidden="true" />
+                <span>Little paws. Big love.</span>
+              </div>
+            </div>
+            <div className="public-section-copy">
+              <span className="public-eyebrow">
+                <DashboardIcon name="pet" /> ABOUT & SERVICES
+              </span>
+              <h2>
+                Compassionate care.
+                <br />
+                <span>Every pet. Every visit.</span>
+              </h2>
+              <p>
+                FurPaws brings the clinic and your pet’s care journey closer
+                together. Book a visit, share what’s worrying you, and keep your
+                pets’ medical information within reach.
+              </p>
+              <div className="public-about-features">
+                {[
+                  [HeartOutlined, "Care with compassion"],
+                  [FileProtectOutlined, "Your pet’s own records"],
+                  [CalendarOutlined, "Simple online booking"],
+                  [BellOutlined, "Helpful care reminders"],
+                ].map(([Icon, text]) => (
+                  <div key={text}>
+                    <span className="public-feature-icon">
+                      <Icon aria-hidden="true" />
+                    </span>
+                    <strong>{text}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
           <div className="public-container public-services-grid">
             <div className="public-section-copy">
               <span className="public-eyebrow">
@@ -198,20 +234,6 @@ export default function PublicLanding() {
                 alt="A veterinarian examining a dog in a clinic"
                 loading="lazy"
               />
-              <div className="public-care-promise">
-                <DashboardIcon name="pet" />
-                <span>
-                  Care that stays
-                  <br />
-                  close to home.
-                </span>
-                <strong>
-                  One account.
-                  <br />
-                  Every visit.
-                </strong>
-                <p>Your pets, records, and appointments, together.</p>
-              </div>
               <img
                 className="public-cat-photo"
                 src="/assets/stock/pets-magnific.jpg"
@@ -223,10 +245,7 @@ export default function PublicLanding() {
         </section>
         <section className="public-container">
           <div className="public-booking-banner">
-            <div className="public-banner-sketch">
-              <DashboardIcon name="pet" />
-              <HeartOutlined aria-hidden="true" />
-            </div>
+            <img src="/assets/stock/pets-magnific.jpg" alt="" loading="lazy" />
             <div>
               <span className="public-eyebrow">
                 <CalendarOutlined aria-hidden="true" /> BOOK AN APPOINTMENT
@@ -240,58 +259,11 @@ export default function PublicLanding() {
                 Need an appointment? Create your owner account and choose a
                 convenient visit for your pet.
               </p>
-              <Link className="button primary" to="/login?mode=register">
-                Sign up now <ArrowRightOutlined aria-hidden="true" />
-              </Link>
+              <a className="button public-outline" href="#how-it-works">How booking works <ArrowRightOutlined aria-hidden="true" /></a>
             </div>
-            <img src="/assets/stock/pets-magnific.jpg" alt="" loading="lazy" />
-          </div>
-        </section>
-        <section className="public-section" id="about">
-          <div className="public-container public-about-grid">
-            <div className="public-about-image">
-              <img
-                src="/assets/stock/vet-magnific.jpg"
-                alt="Gentle care for a dog during a veterinary consultation"
-                loading="lazy"
-              />
-              <div className="public-photo-caption">
-                <HeartOutlined aria-hidden="true" />
-                <span>Little paws. Big love.</span>
-              </div>
-            </div>
-            <div className="public-section-copy">
-              <span className="public-eyebrow">
-                <DashboardIcon name="pet" /> ABOUT FURPAWS
-              </span>
-              <h2>
-                Compassionate care.
-                <br />
-                <span>Every pet. Every visit.</span>
-              </h2>
-              <p>
-                FurPaws brings the clinic and your pet’s care journey closer
-                together. Book a visit, share what’s worrying you, and keep your
-                pets’ medical information within reach.
-              </p>
-              <div className="public-about-features">
-                {[
-                  [HeartOutlined, "Care with compassion"],
-                  [FileProtectOutlined, "Your pet’s own records"],
-                  [CalendarOutlined, "Simple online booking"],
-                  [BellOutlined, "Helpful care reminders"],
-                ].map(([Icon, text]) => (
-                  <div key={text}>
-                    <span className="public-feature-icon">
-                      <Icon aria-hidden="true" />
-                    </span>
-                    <strong>{text}</strong>
-                  </div>
-                ))}
-              </div>
-              <a className="button public-outline" href="#how-it-works">
-                See how it works <ArrowRightOutlined aria-hidden="true" />
-              </a>
+            <div className="public-banner-sketch">
+              <DashboardIcon name="pet" />
+              <HeartOutlined aria-hidden="true" />
             </div>
           </div>
         </section>
@@ -374,9 +346,7 @@ export default function PublicLanding() {
               <span className="public-eyebrow">
                 LET’S PLAN THEIR NEXT VISIT
               </span>
-              <Link to="/login?mode=register">
-                Sign up for FurPaws <ArrowRightOutlined aria-hidden="true" />
-              </Link>
+              <p>Thoughtful care, from their first visit to their next.</p>
             </div>
           </div>
           <div className="public-photo-credits">

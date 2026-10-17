@@ -19,6 +19,8 @@ const {
   assertFields,
 } = require("../utils/core");
 const { normalizePhone } = require("../utils/phone");
+const { findOpenSlot } = require("./appointmentController");
+const { PROCEDURES } = Consultation;
 const getConsultations = async (req, res) =>
   res.json(
     await Consultation.find()
@@ -65,8 +67,11 @@ const completeConsultation = async (req, res) =>
       assertFields(req.body, [
         "appointment",
         "weight",
+        "symptoms",
         "diagnosis",
+        "prescription",
         "treatment",
+        "procedure",
         "notes",
         "followUp",
         "vaccination",
@@ -74,11 +79,18 @@ const completeConsultation = async (req, res) =>
       const {
         appointment: appointmentId,
         weight,
+        symptoms,
         diagnosis,
+        prescription,
         treatment,
+        procedure = "N/A",
         notes,
         vaccination,
       } = req.body;
+      if (!PROCEDURES.includes(procedure))
+        fail(400, "Choose a procedure from the list, or N/A.", {
+          procedure: "Choose a valid option.",
+        });
       const followUp = followUpDetails(req.body.followUp);
       const appointment = await getDoc(Appointment, appointmentId, session);
       if (appointment.status !== "Approved")
@@ -97,7 +109,9 @@ const completeConsultation = async (req, res) =>
           { weight: "Enter the measured weight in kg." },
         );
       for (const [key, value] of Object.entries({
+        symptoms,
         diagnosis,
+        prescription,
         treatment,
         notes,
       }))
@@ -108,10 +122,18 @@ const completeConsultation = async (req, res) =>
           fail(400, "Clinical notes must be text, up to 2,000 characters.", {
             [key]: "Enter valid text.",
           });
-      if (!vaccineService && (!diagnosis?.trim() || !treatment?.trim()))
-        fail(400, "Diagnosis and treatment are required.", {
+      if (
+        !vaccineService &&
+        (!symptoms?.trim() ||
+          !diagnosis?.trim() ||
+          !(prescription?.trim() || treatment?.trim()))
+      )
+        fail(400, "Symptoms, diagnosis and prescription are required.", {
+          symptoms: !symptoms?.trim() ? "Symptoms are required." : undefined,
           diagnosis: !diagnosis?.trim() ? "Diagnosis is required." : undefined,
-          treatment: !treatment?.trim() ? "Treatment is required." : undefined,
+          prescription: !(prescription?.trim() || treatment?.trim())
+            ? "Prescription is required (enter N/A if none)."
+            : undefined,
         });
       if (vaccineService && !vaccination)
         fail(400, "Vaccination details are required.");
@@ -140,8 +162,11 @@ const completeConsultation = async (req, res) =>
             owner: appointment.owner,
             admin: req.user._id,
             weight,
+            symptoms,
             diagnosis,
+            prescription,
             treatment,
+            procedure,
             notes,
             followUp,
           },
@@ -169,6 +194,43 @@ const completeConsultation = async (req, res) =>
           ],
           { session },
         );
+      // Next vaccination: book the owner's next appointment automatically.
+      let nextAppointment = null;
+      if (vaccination) {
+        const time = await findOpenSlot(
+          vaccination.nextDueDate,
+          appointment.time,
+          session,
+        );
+        if (time) {
+          [nextAppointment] = await Appointment.create(
+            [
+              {
+                owner: appointment.owner,
+                pet: pet._id,
+                service: service._id,
+                date: vaccination.nextDueDate,
+                time,
+                bookingType: appointment.bookingType,
+                status: "Approved",
+                source: "Clinic",
+                reasonForVisit: `Scheduled ${vaccination.vaccine} vaccination.`,
+                admin: req.user._id,
+              },
+            ],
+            { session },
+          );
+          await audit(
+            req.user,
+            "Create",
+            "appointments",
+            nextAppointment._id,
+            undefined,
+            nextAppointment.toObject(),
+            session,
+          );
+        }
+      }
       const items = [
         {
           name: service.name,
@@ -206,14 +268,21 @@ const completeConsultation = async (req, res) =>
           {
             owner: owner._id,
             pet: pet._id,
-            title: followUp.enabled
-              ? "Follow-up checkup recommended"
-              : "Medical care reminder",
-            message: followUp.enabled
-              ? `${pet.name} · Suggested checkup ${followUp.date}. ${followUp.purpose}. ${followUp.instructions} Please book an available appointment.`
-              : vaccination
-                ? `${pet.name} · ${vaccination.vaccine} next due ${vaccination.nextDueDate}.`
-                : `${pet.name}: Follow the saved treatment and care instructions. ${notes || ""}`,
+            ...(nextAppointment ? { appointment: nextAppointment._id } : {}),
+            title: vaccination
+              ? nextAppointment
+                ? "Next vaccination scheduled"
+                : "Vaccination due soon"
+              : followUp.enabled
+                ? "Follow-up checkup recommended"
+                : "Medical care reminder",
+            message: vaccination
+              ? nextAppointment
+                ? `${pet.name} · ${vaccination.vaccine} booster is booked for ${nextAppointment.date} at ${nextAppointment.time}. See My Appointments to review or reschedule.`
+                : `${pet.name} · ${vaccination.vaccine} next due ${vaccination.nextDueDate}. No clinic slot was open that day, so please book an available appointment.`
+              : followUp.enabled
+                ? `${pet.name} · Suggested checkup ${followUp.date}. ${followUp.purpose}. ${followUp.instructions} Please book an available appointment.`
+                : `${pet.name}: Follow the saved care instructions. ${prescription ? `Prescription: ${prescription}. ` : ""}${notes || ""}`,
             dueAt: followUp.enabled
               ? new Date(`${followUp.date}T00:00:00+08:00`)
               : vaccination
@@ -259,7 +328,7 @@ const completeConsultation = async (req, res) =>
         bill.toObject(),
         session,
       );
-      return { consultation, bill, appointment };
+      return { consultation, bill, appointment, nextAppointment };
     }),
   );
 const startEmergency = async (req, res) =>
@@ -455,12 +524,29 @@ const startEmergency = async (req, res) =>
 const updateConsultation = async (req, res) =>
   res.json(
     await transaction(async (session) => {
-      assertFields(req.body, ["diagnosis", "treatment", "notes", "followUp"]);
+      assertFields(req.body, [
+        "symptoms",
+        "diagnosis",
+        "prescription",
+        "treatment",
+        "procedure",
+        "notes",
+        "followUp",
+      ]);
+      if (req.body.procedure !== undefined && !PROCEDURES.includes(req.body.procedure))
+        fail(400, "Choose a procedure from the list, or N/A.");
       const record = await getDoc(Consultation, req.params.id, session);
       const before = record.toObject();
       Object.assign(
         record,
-        pick(req.body, ["diagnosis", "treatment", "notes"]),
+        pick(req.body, [
+          "symptoms",
+          "diagnosis",
+          "prescription",
+          "treatment",
+          "procedure",
+          "notes",
+        ]),
       );
       if (req.body.followUp !== undefined)
         record.followUp = followUpDetails(req.body.followUp);

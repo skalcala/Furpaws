@@ -68,6 +68,20 @@ const validateSlot = async (date, time, session, excludeId) => {
       { time: `Slot is ${state.toLowerCase()}.` },
     );
 };
+// First open slot on `date`, trying `preferredTime` first. Used when the clinic
+// schedules a pet's next vaccination automatically.
+const findOpenSlot = async (date, preferredTime, session) => {
+  const schedule = await lockSchedule(session);
+  if (!schedule) return null;
+  const candidates = [
+    preferredTime,
+    ...schedule.times.filter((time) => time !== preferredTime),
+  ];
+  for (const time of candidates)
+    if ((await slotState(date, time, schedule, session)) === "Available")
+      return time;
+  return null;
+};
 const getSlots = async (req, res) => {
   const schedule = await Schedule.findOne({ key: "clinic" });
   if (!schedule) fail(503, "Clinic schedule is not configured.");
@@ -470,4 +484,5 @@ module.exports = {
   createAppointment,
   decideAppointment,
   updateAppointment,
+  findOpenSlot,
 };

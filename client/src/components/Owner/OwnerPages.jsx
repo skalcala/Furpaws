@@ -1,0 +1,1116 @@
+import OwnerLanding from "./OwnerLanding";
+import { NotificationFeed } from "../Shared/NotificationCenter";
+import {
+  UserOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  EnvironmentOutlined,
+  SafetyCertificateOutlined,
+  EditOutlined,
+  LockOutlined,
+} from "@ant-design/icons";
+import {
+  MetricCard,
+  DashboardCard,
+  ShortcutGrid,
+  StatusRing,
+  SnapshotRows,
+  ReminderTiles,
+  DashboardNotice,
+  DashboardIcon,
+} from "../Shared/Dashboard";
+import { useEffect, useState } from "react";
+import { Alert, App, Button, Form, Input, Modal, Pagination, Tabs } from "antd";
+import { Link, useLocation, useParams } from "react-router-dom";
+import {
+  api,
+  dayKey,
+  errorMessage,
+  formatDate,
+  formatTime,
+  shortId,
+} from "../../api";
+import { useAuth } from "../Auth/AuthContext";
+import {
+  DataTable,
+  Details,
+  Note,
+  Panel,
+  RequestState,
+  Status,
+  useResource,
+} from "../Shared/UI";
+const pageDescriptions = {
+  U2: "Your details, contact information, and account security.",
+  settings:
+    "Your profile, contact information, password, and account settings.",
+  U3: "A familiar place for your pets and their health stories.",
+  U3a: "Register your pet to begin their clinic care journey.",
+  U3b: "Your pet’s profile and current health information.",
+  U3c: "Consultation notes, prescriptions, and vaccination history.",
+  U4: "Let’s plan your pet’s next visit, one step at a time.",
+  U5: "Tell us about the pet you’re bringing to the clinic.",
+  U6: "Choose a service and an available clinic appointment.",
+  U7: "Check your pet and visit details before submitting.",
+  U8: "Your visit request and the next steps from the clinic.",
+  U9: "Stay close to every visit, from request to completed care.",
+  U10: "Booking decisions, medical updates, and care reminders.",
+  A2: "Review booking requests and the pet details that need approval.",
+  A3: "Organize upcoming visits and manage appointment updates.",
+  A4: "Keep today’s approved appointments moving through care.",
+  A5: "Consultations, clinical findings, and prescription history.",
+  A6: "Owner contact details, pet profiles, and medical information.",
+  A7: "Track vaccinations, administered doses, and next due dates.",
+  A8: "Manage medicine stock, expiry dates, and inventory levels.",
+  A9: "Maintain the clinic services available for owner bookings.",
+  A10: "Set clinic hours, slot capacity, and blocked dates.",
+  A11: "Review consultation bills and record collected payments.",
+  A12: "A clear view of clinic activity, revenue, and expenses.",
+  A13: "Keep clinic operating costs organized and up to date.",
+  A14: "Review the full history of messages sent to pet owners.",
+  A15: "A traceable record of approvals and changes in the clinic.",
+};
+export function PageHeading({ title }) {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+  const screen = pathname.split("/")[2];
+  const description =
+    pageDescriptions[screen] ||
+    (user.role === "ADMIN"
+      ? "Manage clinic information and patient care."
+      : "Everything you need for your pet’s care, together.");
+  return (
+    <div className="page-heading">
+      <div className="page-heading-copy">
+        <span className="portal-kicker">
+          {user.role === "ADMIN"
+            ? "FURPAWS / CLINIC MANAGEMENT"
+            : "FURPAWS / MY PET CARE"}
+        </span>
+        <h1>{title}</h1>
+        <p>{description}</p>
+      </div>
+      <span className="page-date">
+        <DashboardIcon name="calendar" />
+        {new Date().toLocaleDateString("en-PH", {
+          timeZone: "Asia/Manila",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })}
+      </span>
+    </div>
+  );
+}
+export function OwnerDashboard() {
+  const appointments = useResource("/appointments");
+  const notifications = useResource("/notifications");
+  const pets = useResource("/pets");
+  const { refresh: refreshNotifications } = notifications;
+  useEffect(() => {
+    const refresh = () => refreshNotifications();
+    window.addEventListener("furpaws:notifications", refresh);
+    return () => window.removeEventListener("furpaws:notifications", refresh);
+  }, [refreshNotifications]);
+  const { user } = useAuth();
+  const upcoming = appointments.data.filter(
+    ({ date, status }) =>
+      date >= dayKey() && ["Approved", "Pending"].includes(status),
+  );
+  const approved = upcoming.find(({ status }) => status === "Approved");
+  const pending = appointments.data.filter(
+    ({ status }) => status === "Pending",
+  );
+  const completed = appointments.data.filter(
+    ({ status }) => status === "Completed",
+  );
+  const reminders = notifications.data.filter(({ title }) =>
+    /reminder/i.test(title),
+  );
+  const unread = notifications.data.filter(({ read }) => !read);
+  return (
+    <div className="dashboard-page">
+      <DashboardNotice resources={[appointments, notifications, pets]} />
+      <OwnerLanding user={user} pets={pets.data} upcoming={upcoming} />
+      <div className="dashboard-metrics">
+        <MetricCard
+          label="My Pets"
+          value={pets.data.length}
+          caption="Approved clinic records"
+          icon="pet"
+          loading={pets.loading}
+        />
+        <MetricCard
+          label="Upcoming Visits"
+          value={upcoming.length}
+          caption="Your next appointments"
+          icon="calendar"
+          loading={appointments.loading}
+        />
+        <MetricCard
+          label="Pending Requests"
+          value={pending.length}
+          caption="Awaiting clinic approval"
+          icon="clock"
+          loading={appointments.loading}
+        />
+        <MetricCard
+          label="Completed Visits"
+          value={completed.length}
+          caption="Your pets’ care history"
+          icon="check"
+          loading={appointments.loading}
+        />
+        <MetricCard
+          label="Unread Messages"
+          value={unread.length}
+          caption="Decisions and reminders"
+          icon="bell"
+          loading={notifications.loading}
+        />
+      </div>
+      <div className="dashboard-content-grid">
+        <DashboardCard
+          eyebrow="Schedule"
+          title="Upcoming Appointments"
+          action={{ to: "/owner/U9" }}
+        >
+          {approved ? (
+            <div className="dashboard-next-visit">
+              <div className="row spread">
+                <span className="dashboard-icon">
+                  <DashboardIcon name="pet" />
+                </span>
+                <Status value={approved.status} />
+              </div>
+              <h3>
+                {approved.pet?.name} · {approved.service?.name}
+              </h3>
+              <p>
+                {formatDate(approved.date)} · {formatTime(approved.time)}
+              </p>
+              <small>With {approved.admin?.name || "the clinic Admin"}</small>
+            </div>
+          ) : (
+            <div className="dashboard-empty">
+              <span className="dashboard-icon">
+                <DashboardIcon name="calendar" />
+              </span>
+              <p>No approved upcoming appointments.</p>
+            </div>
+          )}
+          {upcoming
+            .filter(({ _id }) => _id !== approved?._id)
+            .slice(0, 2)
+            .map(({ _id, pet, date, time, status }) => (
+              <div className="dashboard-visit" key={_id}>
+                <div>
+                  <strong>{pet?.name}</strong>
+                  <p>
+                    {formatDate(date)} · {formatTime(time)}
+                  </p>
+                </div>
+                <Status value={status} />
+              </div>
+            ))}
+          <Link className="button dashboard-wide-button" to="/owner/U9">
+            View My Appointments
+          </Link>
+        </DashboardCard>
+        <DashboardCard eyebrow="Shortcuts" title="Quick Links">
+          <ShortcutGrid
+            items={[
+              { label: "Book Appointment", to: "/owner/U4", icon: "calendar" },
+              { label: "My Pets", to: "/owner/U3", icon: "pet" },
+              {
+                label: "Medical Records",
+                to: "/owner/U3?view=records",
+                icon: "record",
+              },
+              { label: "Appointments", to: "/owner/U9", icon: "clock" },
+              { label: "Notifications", to: "/owner/U10", icon: "bell" },
+              { label: "My Profile", to: "/owner/U2", icon: "profile" },
+            ]}
+          />
+        </DashboardCard>
+        <DashboardCard
+          eyebrow="Care overview"
+          title="My Appointment Status"
+          action={{ to: "/owner/U9" }}
+        >
+          <StatusRing
+            items={[
+              {
+                label: "Approved",
+                count: appointments.data.filter(
+                  ({ status }) => status === "Approved",
+                ).length,
+              },
+              { label: "Completed", count: completed.length },
+              { label: "Pending", count: pending.length },
+            ]}
+          />
+          <div className="dashboard-note">
+            <DashboardIcon name="record" />
+            <span>
+              Completed visit records are available in your pet’s medical
+              history.
+            </span>
+          </div>
+        </DashboardCard>
+        <DashboardCard eyebrow="Overview" title="Pet Care Snapshot">
+          <SnapshotRows
+            items={[
+              {
+                title: `${pets.data.length} approved pets`,
+                text: "Your pets’ clinic records",
+                icon: "pet",
+              },
+              {
+                title: `${upcoming.length} upcoming visits`,
+                text: "Pending or approved appointments",
+                icon: "calendar",
+              },
+              {
+                title: `${reminders.length} care reminders`,
+                text: "Clinic messages and due dates",
+                icon: "bell",
+              },
+            ]}
+          />
+          <div className="dashboard-advisory">
+            Bring your pet’s current medicines and arrive 10 minutes before your
+            scheduled time.
+          </div>
+        </DashboardCard>
+        <DashboardCard
+          eyebrow="Actions"
+          title="Care Reminders"
+          className="dashboard-span-two"
+        >
+          <ReminderTiles
+            items={[
+              {
+                title: "Check appointment updates",
+                text: `${pending.length} requests awaiting clinic review`,
+                icon: "calendar",
+                to: "/owner/U9",
+                action: "View",
+              },
+              {
+                title: "Read care reminders",
+                text: `${unread.length} unread notifications`,
+                icon: "bell",
+                to: "/owner/U10",
+                action: "Read",
+              },
+              {
+                title: "Review medical records",
+                text: "Your pets’ consultation and vaccine history",
+                icon: "record",
+                to: "/owner/U3?view=records",
+                action: "Open",
+              },
+            ]}
+          />
+          <div className="dashboard-reminder-messages">
+            {reminders.slice(0, 2).map(({ _id, title, message }) => (
+              <div key={_id}>
+                <strong>{title}</strong>
+                <p>{message}</p>
+              </div>
+            ))}
+            {!reminders.length && (
+              <p className="muted">
+                Your clinic’s care reminders will appear here.
+              </p>
+            )}
+          </div>
+        </DashboardCard>
+      </div>
+    </div>
+  );
+}
+export function OwnerProfile({ embedded = false }) {
+  const { user, setUser } = useAuth();
+  const [mode, setMode] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const submit = async (values) => {
+    setBusy(true);
+    setError("");
+    try {
+      if (mode === "password") await api.post("/users/me/password", values);
+      else {
+        const { data } = await api.patch("/users/me", values);
+        setUser(data);
+      }
+      setMode(null);
+      message.success("Changes saved.");
+    } catch (failure) {
+      setError(errorMessage(failure));
+      const errors = failure.response?.data?.errors;
+      if (errors)
+        form.setFields(
+          Object.entries(errors).map(([name, value]) => ({
+            name,
+            errors: [value],
+          })),
+        );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const open = (value) => {
+    setMode(value);
+    setError("");
+    form.resetFields();
+    if (value === "profile") form.setFieldsValue(user);
+  };
+  return (
+    <>
+      {!embedded && (
+        <PageHeading
+          title={user.role === "ADMIN" ? "My Profile" : "Owner Profile"}
+        />
+      )}
+      <div className="account-overview">
+        <div className="account-cover">
+          <span className="account-avatar">
+            {user.name
+              .split(" ")
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((part) => part[0])
+              .join("")}
+          </span>
+          <div>
+            <span className="account-role">
+              <SafetyCertificateOutlined aria-hidden="true" />{" "}
+              {user.role === "ADMIN" ? "Clinic administrator" : "Pet owner"}
+            </span>
+            <h2>{user.name}</h2>
+            <p>{user.email}</p>
+          </div>
+        </div>
+        <div className="account-details-card">
+          <div className="account-section-heading">
+            <h3>Personal information</h3>
+            <p>Keep your contact details up to date.</p>
+          </div>
+          <dl className="account-details">
+            {[
+              { label: "Full name", value: user.name, Icon: UserOutlined },
+              { label: "Email address", value: user.email, Icon: MailOutlined },
+              {
+                label: "Mobile number",
+                value: user.phone,
+                Icon: PhoneOutlined,
+              },
+              {
+                label: "Address",
+                value: user.address || "No address added",
+                Icon: EnvironmentOutlined,
+              },
+            ].map(({ label, value, Icon }) => (
+              <div key={label}>
+                <Icon aria-hidden="true" />
+                <div>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              </div>
+            ))}
+          </dl>
+          <Button
+            type="primary"
+            icon={<EditOutlined aria-hidden="true" />}
+            onClick={() => open("profile")}
+          >
+            Edit Profile
+          </Button>
+        </div>
+        <div className="account-security">
+          <span className="account-feature-icon">
+            <LockOutlined aria-hidden="true" />
+          </span>
+          <div>
+            <h3>Password & security</h3>
+            <p>Manage the password you use to sign in.</p>
+          </div>
+          <Button onClick={() => open("password")}>Change Password</Button>
+        </div>
+      </div>
+      <Modal
+        title={mode === "password" ? "Change Password" : "Edit Profile"}
+        open={!!mode}
+        onCancel={() => setMode(null)}
+        footer={null}
+        destroyOnHidden
+      >
+        {error && <Alert type="error" message={error} />}
+        <Form form={form} layout="vertical" onFinish={submit}>
+          {mode === "password" ? (
+            <>
+              <Form.Item
+                label="Current password"
+                name="currentPassword"
+                rules={[{ required: true }]}
+              >
+                <Input.Password autoComplete="current-password" />
+              </Form.Item>
+              <Form.Item
+                label="New password"
+                name="password"
+                rules={[
+                  {
+                    required: true,
+                    pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,72}$/,
+                    message:
+                      "Use 8–72 characters, uppercase, lowercase, and a number.",
+                  },
+                ]}
+              >
+                <Input.Password autoComplete="new-password" />
+              </Form.Item>
+            </>
+          ) : (
+            <>
+              <Form.Item
+                label="Name"
+                name="name"
+                rules={[{ required: true, min: 2, max: 80 }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item
+                label="Contact number"
+                name="phone"
+                rules={[
+                  {
+                    required: true,
+                    pattern: /^(09\d{9}|\+639\d{9})$/,
+                    message: "Use a valid PH mobile number.",
+                  },
+                ]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item
+                label="Email"
+                name="email"
+                rules={[{ required: true, type: "email" }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item label="Address" name="address" rules={[{ max: 300 }]}>
+                <Input />
+              </Form.Item>
+            </>
+          )}
+          <Button type="primary" htmlType="submit" loading={busy}>
+            Save Changes
+          </Button>
+        </Form>
+      </Modal>
+    </>
+  );
+}
+export function PetCards({ pets, admin = false, select, selected }) {
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
+  const currentPage = Math.min(
+    page,
+    Math.max(1, Math.ceil(pets.length / pageSize)),
+  );
+  const visiblePets = pets.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+  return (
+    <div className="pet-collection">
+      <div className="two-columns pet-cards-grid">
+        {visiblePets.map(
+          ({
+            _id,
+            name,
+            species,
+            breed,
+            status,
+            weight,
+            picture,
+            birthDate,
+          }) => (
+            <Panel key={_id}>
+              <div className="pet-card">
+                <div className="pet-picture">
+                  {picture ? (
+                    <img src={picture} alt={name} />
+                  ) : (
+                    <span>{species}</span>
+                  )}
+                </div>
+                <div className="pet-card-info">
+                  <h2>{name}</h2>
+                  <p>
+                    {species} · {breed}
+                  </p>
+                  <Status value={status} />
+                  <p>
+                    {Math.max(
+                      0,
+                      Math.floor(
+                        (Date.now() - new Date(birthDate)) / 31557600000,
+                      ),
+                    )}{" "}
+                    years · {weight} kg
+                  </p>
+                  {select ? (
+                    <Button
+                      type={selected === _id ? "primary" : "default"}
+                      onClick={() => select(_id)}
+                    >
+                      {selected === _id ? "Selected pet" : "Select pet"}
+                    </Button>
+                  ) : (
+                    <Link
+                      className="button"
+                      to={`/${admin ? "admin/A6b" : "owner/U3b"}/${_id}`}
+                    >
+                      View
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </Panel>
+          ),
+        )}
+      </div>
+      <Pagination
+        current={currentPage}
+        pageSize={pageSize}
+        total={pets.length}
+        onChange={setPage}
+        hideOnSinglePage
+        showSizeChanger={false}
+        responsive
+      />
+    </div>
+  );
+}
+export function MyPets() {
+  const pets = useResource("/pets");
+  return (
+    <>
+      <PageHeading title="My Pets · Approved List" />
+      <RequestState {...pets} retry={pets.refresh}>
+        {pets.data.length ? (
+          <>
+            <p>{pets.data.length} approved pets associated with your account</p>
+            <PetCards pets={pets.data} />
+            <Note>
+              New pets appear only after Admin approval or after the completed
+              checkup. Register a new pet through a No record appointment.
+            </Note>
+          </>
+        ) : (
+          <Panel className="empty-pets">
+            <img src="/assets/imgClipboardList.svg" alt="" />
+            <h2>No pets yet</h2>
+            <p>
+              Approved pets will appear here. Register a new pet through a No
+              record appointment; the pet stays hidden until approved or after
+              the completed checkup.
+            </p>
+            <Link className="button primary" to="/owner/U4">
+              Book an appointment
+            </Link>
+            <small>Pets cannot be added directly from this page.</small>
+          </Panel>
+        )}
+      </RequestState>
+    </>
+  );
+}
+export function PetDetail({ admin = false }) {
+  const { id } = useParams();
+  const pet = useResource(`/pets/${id}`);
+  const [editing, setEditing] = useState(false);
+  const [decision, setDecision] = useState(null);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const save = async (values) => {
+    setBusy(true);
+    setError("");
+    try {
+      await api.patch(`/pets/${id}`, values);
+      setEditing(false);
+      await pet.refresh();
+      message.success("Pet information saved.");
+    } catch (failure) {
+      setError(errorMessage(failure));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const upload = async ({ target }) => {
+    const file = target.files[0];
+    if (!file) return;
+    if (
+      file.size > 2000000 ||
+      !["image/png", "image/jpeg", "image/webp"].includes(file.type)
+    ) {
+      message.error("Use a JPG, PNG, or WebP image up to 2 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => save({ picture: reader.result });
+    reader.readAsDataURL(file);
+  };
+  const data = pet.data;
+  return (
+    <>
+      <PageHeading
+        title={admin ? "Pet Detail & Validation" : "Pet General Information"}
+      />
+      <RequestState {...pet} retry={pet.refresh}>
+        <Panel
+          title={admin ? "Pet identity" : "Pet picture"}
+          action={<Status value={data.status} />}
+        >
+          <div className="pet-identity">
+            <div>
+              {data.picture && (
+                <img
+                  className="detail-picture"
+                  src={data.picture}
+                  alt={data.name}
+                />
+              )}
+              <label className="button upload-label">
+                {busy ? "Uploading…" : "Update picture"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={upload}
+                  disabled={busy}
+                />
+              </label>
+            </div>
+            <div className="grow">
+              <h2>General information</h2>
+              <Details
+                entries={[
+                  ["Name", data.name],
+                  ["Species", data.species],
+                  ["Breed", data.breed],
+                  ["Current weight", `${data.weight} kg`],
+                  [
+                    "Age",
+                    `${Math.max(0, Math.floor((Date.now() - new Date(data.birthDate)) / 31557600000))} years`,
+                  ],
+                  ["Date of birth", formatDate(data.birthDate)],
+                  ...(admin
+                    ? [
+                        ["Owner", data.owner?.name],
+                        ["Validation status", data.status],
+                      ]
+                    : []),
+                ]}
+              />
+            </div>
+          </div>
+          <div className="row">
+            <Link
+              className="button"
+              to={`/${admin ? "admin/A6c" : "owner/U3c"}/${id}`}
+            >
+              Medical Records
+            </Link>
+            {admin && data.status === "Pending" && (
+              <>
+                <Button type="primary" onClick={() => setDecision("Approved")}>
+                  Approve Pet
+                </Button>
+                <Button danger onClick={() => setDecision("Declined")}>
+                  Decline Pet
+                </Button>
+              </>
+            )}
+            {admin && (
+              <Button
+                onClick={() => {
+                  form.setFieldsValue({
+                    ...data,
+                    birthDate: data.birthDate?.slice(0, 10),
+                  });
+                  setEditing(true);
+                }}
+              >
+                Edit
+              </Button>
+            )}
+          </div>
+        </Panel>
+        <Note>
+          {admin
+            ? "Verify pet identity and health information before editing. Clinical updates are restricted to an Admin."
+            : `You may update ${data.name}’s picture only. General and clinical information is maintained by the clinic.`}
+        </Note>
+      </RequestState>
+      <Modal
+        open={!!decision}
+        title={decision === "Approved" ? "Approve pet?" : "Decline pet"}
+        onCancel={() => setDecision(null)}
+        confirmLoading={busy}
+        onOk={async () => {
+          if (decision === "Declined" && !reason.trim()) {
+            message.error("Decline reason is required.");
+            return;
+          }
+          setBusy(true);
+          try {
+            await api.post(`/pets/${id}/decision`, {
+              status: decision,
+              reason,
+            });
+            setDecision(null);
+            await pet.refresh();
+            message.success("Pet decision saved.");
+          } catch (failure) {
+            message.error(errorMessage(failure));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <p>{data.name}</p>
+        {decision === "Declined" && (
+          <Input.TextArea
+            aria-label="Pet decline reason"
+            value={reason}
+            maxLength={500}
+            onChange={({ target: { value } }) => setReason(value)}
+          />
+        )}
+      </Modal>
+      <Modal
+        open={editing}
+        title="Edit pet information"
+        onCancel={() => setEditing(false)}
+        footer={null}
+      >
+        {error && <Alert type="error" message={error} />}
+        <Form form={form} layout="vertical" onFinish={save}>
+          {["name", "breed"].map((name) => (
+            <Form.Item
+              key={name}
+              name={name}
+              label={name === "name" ? "Pet name" : "Breed"}
+              rules={[{ required: true, max: 80 }]}
+            >
+              <Input />
+            </Form.Item>
+          ))}
+          <Form.Item
+            label="Birth date"
+            name="birthDate"
+            rules={[{ required: true }]}
+          >
+            <Input type="date" max={dayKey()} />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" loading={busy}>
+            Save Changes
+          </Button>
+        </Form>
+      </Modal>
+    </>
+  );
+}
+export function MedicalRecords({ admin = false }) {
+  const { id } = useParams();
+  const records = useResource(`/pets/${id}/records`);
+  const [tab, setTab] = useState("Diagnoses");
+  const [edit, setEdit] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [form] = Form.useForm();
+  const data = records.data;
+  const { message } = App.useApp();
+  const consultations = data.consultations || [];
+  const prescriptions = consultations.flatMap(
+    ({ prescriptions, admin: clinician, createdAt }) =>
+      prescriptions.map((rx) => ({ ...rx, admin: clinician?.name, createdAt })),
+  );
+  const save = async (values) => {
+    setBusy(true);
+    try {
+      await api.patch(`/consultations/${edit._id}`, values);
+      setEdit(null);
+      await records.refresh();
+      message.success("Medical record updated.");
+    } catch (failure) {
+      setError(errorMessage(failure));
+    } finally {
+      setBusy(false);
+    }
+  };
+  let columns = [
+    { title: "Date", dataIndex: "createdAt", render: formatDate },
+    { title: "Diagnosis", dataIndex: "diagnosis" },
+    { title: "Treatment", dataIndex: "treatment" },
+    { title: "Admin", render: (_, { admin: clinician }) => clinician?.name },
+  ];
+  let rows = consultations;
+  if (tab === "Prescriptions") {
+    rows = prescriptions;
+    columns = ["name", "dosage", "frequency", "duration"].map((key) => ({
+      title: key === "name" ? "Medicine" : key[0].toUpperCase() + key.slice(1),
+      dataIndex: key,
+    }));
+  }
+  if (tab === "Vaccinations") {
+    rows = data.vaccinations || [];
+    columns = [
+      { title: "Vaccine", dataIndex: "vaccine" },
+      { title: "Date given", dataIndex: "dateGiven", render: formatDate },
+      { title: "Next due date", dataIndex: "nextDueDate", render: formatDate },
+    ];
+  }
+  if (tab === "Weight History") {
+    rows = data.pet?.weightHistory || [];
+    columns = [
+      { title: "Date", dataIndex: "date", render: formatDate },
+      { title: "Weight (kg)", dataIndex: "weight" },
+    ];
+  }
+  if (tab === "Admin Notes")
+    columns = [
+      { title: "Date", dataIndex: "createdAt", render: formatDate },
+      { title: "Admin notes", dataIndex: "notes" },
+    ];
+  if (tab === "Previous Appointments") {
+    rows = data.appointments || [];
+    columns = [
+      { title: "Date", dataIndex: "date", render: formatDate },
+      { title: "Time", dataIndex: "time", render: formatTime },
+      { title: "Service", render: (_, { service }) => service?.name },
+      {
+        title: "Status",
+        dataIndex: "status",
+        render: (value) => <Status value={value} />,
+      },
+    ];
+  }
+  return (
+    <>
+      <PageHeading
+        title={`Pet Medical Records${admin ? "" : " · View Only"}`}
+      />
+      <RequestState {...records} retry={records.refresh}>
+        <Panel
+          title={`${data.pet?.name} · Medical records`}
+          action={<Status value={admin ? "Admin access" : "View only"} />}
+        >
+          <p>
+            {data.pet?.breed} · Pet record {shortId(id, "PET-")}
+          </p>
+          <Tabs
+            activeKey={tab}
+            onChange={setTab}
+            items={[
+              "Diagnoses",
+              "Treatment History",
+              "Prescriptions",
+              "Vaccinations",
+              "Weight History",
+              "Admin Notes",
+              "Previous Appointments",
+            ].map((label) => ({ key: label, label }))}
+          />
+          <DataTable columns={columns} data={rows} />
+          {admin && consultations.length > 0 && (
+            <Button
+              onClick={() => {
+                setEdit(consultations[0]);
+                form.setFieldsValue(consultations[0]);
+                setError("");
+              }}
+            >
+              Edit latest record
+            </Button>
+          )}
+        </Panel>
+        <div className="two-columns">
+          <Panel title="Latest prescription">
+            {prescriptions[0] ? (
+              <Details
+                entries={["name", "dosage", "frequency", "duration"].map(
+                  (key) => [key, prescriptions[0][key]],
+                )}
+              />
+            ) : (
+              <p>No prescription recorded.</p>
+            )}
+          </Panel>
+          <Panel title="Vaccinations and weight">
+            <Details
+              entries={[
+                ["Current weight", `${data.pet?.weight} kg`],
+                [
+                  "Latest vaccine",
+                  data.vaccinations?.at(-1)?.vaccine || "None",
+                ],
+                [
+                  "Next due date",
+                  formatDate(data.vaccinations?.at(-1)?.nextDueDate),
+                ],
+              ]}
+            />
+          </Panel>
+        </div>
+        <Panel title="Admin Notes">
+          <p>{consultations[0]?.notes || "No clinical notes yet."}</p>
+        </Panel>
+        <Note>
+          Medical records are read only for owners. Only an Admin can create or
+          edit them.
+        </Note>
+      </RequestState>
+      <Modal
+        open={!!edit}
+        title="Correct medical record"
+        onCancel={() => setEdit(null)}
+        footer={null}
+      >
+        {error && <Alert message={error} type="error" />}
+        <Form form={form} layout="vertical" onFinish={save}>
+          {["diagnosis", "treatment", "notes"].map((name) => (
+            <Form.Item
+              key={name}
+              name={name}
+              label={name}
+              rules={[{ max: 2000 }]}
+            >
+              <Input.TextArea rows={3} />
+            </Form.Item>
+          ))}
+          <Note>
+            Prescription and billing history remain attached to the original
+            completed visit.
+          </Note>
+          <Button type="primary" htmlType="submit" loading={busy}>
+            Save Changes
+          </Button>
+        </Form>
+      </Modal>
+    </>
+  );
+}
+export function OwnerAppointments() {
+  const resource = useResource("/appointments");
+  const [tab, setTab] = useState("Upcoming");
+  const [cancel, setCancel] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const { message } = App.useApp();
+  const handleCancel = async () => {
+    setBusy(true);
+    try {
+      await api.patch(`/appointments/${cancel._id}`, { status: "Cancelled" });
+      setCancel(null);
+      await resource.refresh();
+      message.success("Appointment cancelled.");
+    } catch (failure) {
+      message.error(errorMessage(failure));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const rows = resource.data.filter(({ status }) =>
+    tab === "Upcoming"
+      ? ["Pending", "Approved"].includes(status)
+      : !["Pending", "Approved"].includes(status),
+  );
+  return (
+    <>
+      <PageHeading title="My Appointments" />
+      <Tabs
+        activeKey={tab}
+        onChange={setTab}
+        items={["Upcoming", "Previous"].map((label) => ({ key: label, label }))}
+      />
+      <RequestState {...resource} retry={resource.refresh}>
+        <DataTable
+          data={rows}
+          columns={[
+            { title: "Pet", render: (_, { pet }) => pet?.name },
+            { title: "Service", render: (_, { service }) => service?.name },
+            {
+              title: "Date and time",
+              render: (_, { date, time }) =>
+                `${formatDate(date)} · ${formatTime(time)}`,
+            },
+            {
+              title: "Status",
+              dataIndex: "status",
+              render: (value) => <Status value={value} />,
+            },
+            {
+              title: "Owner’s explanation / symptoms",
+              dataIndex: "reasonForVisit",
+              render: (value) => (
+                <p className="visit-explanation appointment-explanation">
+                  {value || "—"}
+                </p>
+              ),
+            },
+            {
+              title: tab === "Upcoming" ? "Action" : "Details",
+              render: (_, record) =>
+                ["Pending", "Approved"].includes(record.status) ? (
+                  <Button onClick={() => setCancel(record)}>Cancel</Button>
+                ) : (
+                  record.declineReason ||
+                  (record.status === "Completed" ? (
+                    <Link to={`/owner/U3c/${record.pet?._id}`}>
+                      Medical records
+                    </Link>
+                  ) : (
+                    "Cancelled by owner."
+                  ))
+                ),
+            },
+          ]}
+        />
+      </RequestState>
+      <Modal
+        open={!!cancel}
+        title="Cancel appointment?"
+        onCancel={() => setCancel(null)}
+        confirmLoading={busy}
+        onOk={handleCancel}
+        okText="Cancel appointment"
+      >
+        <p>
+          {cancel?.pet?.name} · {formatDate(cancel?.date)} ·{" "}
+          {formatTime(cancel?.time)}
+        </p>
+        <p>This will release the booked slot.</p>
+      </Modal>
+    </>
+  );
+}
+export function Notifications({ admin = false }) {
+  const resource = useResource("/notifications");
+  return (
+    <>
+      <PageHeading title={admin ? "Notification Log" : "Notifications"} />
+      <NotificationFeed resource={resource} admin={admin} />
+    </>
+  );
+}

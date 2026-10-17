@@ -1,0 +1,15 @@
+// Per-resource Mongoose models, following the teacher's models/User.js pattern.
+module.exports = {
+  User: require("./User"),
+  Pet: require("./Pet"),
+  Appointment: require("./Appointment"),
+  Consultation: require("./Consultation"),
+  Medicine: require("./Medicine"),
+  Vaccination: require("./Vaccination"),
+  Service: require("./Service"),
+  Schedule: require("./Schedule"),
+  Bill: require("./Bill"),
+  Expense: require("./Expense"),
+  Notification: require("./Notification"),
+  AuditLog: require("./AuditLog"),
+};

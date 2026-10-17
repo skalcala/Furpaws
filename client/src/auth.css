@@ -1,0 +1,233 @@
+/* Compact account actions, with Settings remaining a separate page. */
+.account-menu-popup .ant-dropdown-menu {
+  min-width: var(--accountMenuWidth);
+  padding: var(--space-sm);
+  border: var(--size1) solid var(--colorBorder);
+  border-radius: var(--size14);
+  box-shadow: var(--authShadow);
+}
+.account-menu-popup .ant-dropdown-menu-item {
+  padding: var(--space-md) !important;
+  border-radius: var(--size8);
+  font-size: var(--size13);
+  gap: var(--space-sm);
+}
+.account-menu-popup .ant-dropdown-menu-item .anticon {
+  color: var(--colorPrimary);
+  font-size: var(--size16);
+}
+.account-menu-popup .ant-dropdown-menu-item:hover {
+  background: var(--dashboardSoft);
+}
+.header-account-button[aria-expanded="true"] {
+  background: var(--dashboardSoft);
+  border-color: var(--dashboardBorder);
+}
+/* The supplied login composition: form left, full-height photograph right. */
+.auth-reference.auth-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  background: var(--colorSurface);
+  display: block;
+  padding: 0;
+  overflow: visible;
+}
+.auth-split-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  background: var(--colorSurface);
+  width: 100%;
+  min-height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  align-items: start;
+}
+.auth-form-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: var(--size48) var(--space-xl) var(--space-page);
+  min-width: 0;
+  min-height: 100dvh;
+}
+.auth-back-link {
+  position: absolute;
+  top: var(--space-panel);
+  left: var(--space-page);
+  font-size: var(--size11);
+  color: var(--colorTextSecondary);
+}
+.auth-back-link:hover {
+  color: var(--colorPrimary);
+}
+.auth-reference .auth-card {
+  width: min(100%, var(--authFormWidth));
+  border: 0;
+  border-radius: 0;
+  padding: var(--space-page) 0;
+  box-shadow: none;
+  background: transparent;
+  gap: var(--space-lg);
+  margin: auto 0;
+}
+.auth-reference .auth-card > .logo {
+  align-self: center;
+  margin-bottom: var(--space-panel);
+}
+.auth-reference .auth-card h1 {
+  text-align: center;
+  font-size: var(--size22);
+  line-height: 1.35;
+  color: var(--colorPrimary);
+  letter-spacing: -0.035em;
+}
+.auth-reference .auth-card > p {
+  text-align: center;
+  font-size: var(--size12);
+  color: var(--colorTextSecondary);
+  margin-top: calc(var(--space-sm) * -1);
+}
+.auth-reference .ant-form-item {
+  margin-bottom: var(--space-lg);
+}
+.auth-reference .ant-form-item-label {
+  padding-bottom: var(--space-xs);
+}
+.auth-reference .ant-form-item-label > label {
+  font-size: var(--size12);
+  color: var(--colorTextSecondary);
+}
+.auth-reference .ant-input,
+.auth-reference .ant-input-affix-wrapper {
+  border-radius: var(--size24);
+  min-height: var(--size40);
+  padding-left: var(--space-lg);
+  padding-right: var(--space-lg);
+  border-color: var(--colorBorder);
+}
+.auth-reference .ant-input-affix-wrapper .ant-input {
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+}
+.auth-reference .ant-input:focus,
+.auth-reference .ant-input-affix-wrapper-focused {
+  border-color: var(--colorPrimary);
+}
+.auth-reference .ant-btn-primary {
+  border-radius: var(--size24);
+  min-height: var(--size40);
+  margin-top: var(--space-sm);
+}
+.auth-reference .auth-card > .ant-btn-link {
+  font-size: var(--size12);
+  height: auto;
+  white-space: normal;
+}
+.auth-reference .demo-credentials {
+  font-size: var(--size10);
+  padding: var(--space-sm) 0 0;
+  color: var(--colorTextSecondary);
+}
+.auth-form-footnote {
+  font-size: var(--size10);
+  color: var(--dashboardMuted);
+  text-align: center;
+  padding-top: var(--space-lg);
+  margin-top: 0;
+}
+.auth-photo-side {
+  margin: 0;
+  background: var(--colorPrimary);
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  min-height: 100dvh;
+}
+.auth-photo-side > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 44%;
+}
+.auth-photo-side figcaption {
+  position: absolute;
+  bottom: var(--space-md);
+  right: var(--space-md);
+  left: var(--space-md);
+  text-align: right;
+  font-size: var(--size9);
+  color: var(--colorSurface);
+  text-shadow: 0 var(--size1) var(--size3) var(--colorText);
+}
+.auth-photo-side figcaption a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: var(--size2);
+}
+.auth-reference.is-register .auth-card {
+  gap: var(--space-md);
+}
+.auth-reference.is-register .auth-card > .logo {
+  margin-bottom: var(--space-sm);
+}
+.auth-reference.is-register .ant-form-item {
+  margin-bottom: var(--space-md);
+}
+@media (max-width: 1000px) {
+  .auth-form-side {
+    padding: var(--size48) var(--space-page) var(--space-panel);
+  }
+  .auth-reference .auth-card h1 {
+    font-size: var(--size20);
+  }
+}
+@media (max-width: 600px) {
+  .auth-split-card {
+    grid-template-columns: 1fr;
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+  .auth-photo-side {
+    order: -1;
+    height: var(--size180);
+    min-height: var(--size180);
+    position: relative;
+  }
+  .auth-photo-side > img {
+    object-position: 50% 42%;
+  }
+  .auth-photo-side figcaption {
+    font-size: var(--size8);
+    bottom: var(--space-sm);
+    right: var(--space-sm);
+  }
+  .auth-form-side {
+    padding: var(--size48) var(--space-panel) var(--space-lg);
+    min-height: calc(100dvh - var(--size180));
+  }
+  .auth-reference .auth-card {
+    padding: var(--space-md) 0;
+    gap: var(--space-md);
+  }
+  .auth-reference .auth-card > .logo {
+    margin-bottom: var(--space-sm);
+  }
+  .auth-back-link {
+    top: var(--space-lg);
+    left: var(--space-panel);
+  }
+  .auth-form-footnote {
+    padding-top: var(--space-md);
+  }
+}
+#selected-bill {
+  scroll-margin-top: calc(var(--headerHeight) + var(--space-panel));
+}

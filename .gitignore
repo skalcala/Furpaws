@@ -1,0 +1,15 @@
+node_modules/
+client/node_modules/
+server/node_modules/
+client/build/
+server/.env
+.local/
+*.log
+.DS_Store
+finals/
+.env
+.env.*
+!.env.example
+coverage/
+test-results/
+playwright-report/

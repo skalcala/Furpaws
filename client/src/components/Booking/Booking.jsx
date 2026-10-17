@@ -57,7 +57,8 @@ export function SchedulePicker({
   const [availability, setAvailability] = useState({});
   const [slots, setSlots] = useState([]);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
   const year = month.getFullYear();
   const index = month.getMonth();
   const days = new Date(year, index + 1, 0).getDate();
@@ -66,6 +67,7 @@ export function SchedulePicker({
     let active = true;
     setLoading(true);
     setError("");
+    setAvailability({});
     const dates = Array.from(
       { length: days },
       (_, i) =>
@@ -86,10 +88,11 @@ export function SchedulePicker({
     return () => {
       active = false;
     };
-  }, [year, index, days, rescheduleQuery]);
+  }, [year, index, days, rescheduleQuery, retry]);
   useEffect(() => {
     if (!value.date) return;
     let active = true;
+    setSlots([]);
     api
       .get(`/appointments/slots?date=${value.date}${rescheduleQuery}`)
       .then(({ data }) => active && setSlots(data.slots))
@@ -97,10 +100,19 @@ export function SchedulePicker({
     return () => {
       active = false;
     };
-  }, [value.date, rescheduleQuery]);
+  }, [value.date, rescheduleQuery, retry]);
   const chooseDate = (date) => onChange({ ...value, date, time: "" });
   return (
     <>
+      {error && (
+        <Alert
+          type="error"
+          showIcon
+          message="Appointment availability is unavailable"
+          description={`${error} If the database was reset, ask the clinic administrator to configure Schedule Settings and Services before booking.`}
+          action={<Button onClick={() => setRetry((count) => count + 1)}>Retry</Button>}
+        />
+      )}
       <div className="two-columns schedule-columns">
         <Panel
           title={month.toLocaleDateString("en-PH", {
@@ -146,14 +158,16 @@ export function SchedulePicker({
                         ? "Past"
                         : values.length
                           ? "Blocked"
-                          : "Loading";
+                          : loading
+                            ? "Loading"
+                            : "Unavailable";
               return (
                 <button
                   key={date}
                   type="button"
-                  className={`calendar-day ${date === value.date ? "selected" : ""} ${state.toLowerCase()}`}
+                  className={`calendar-day ${date === value.date ? "selected" : ""} ${state === "Loading" ? "calendar-loading" : state.toLowerCase()}`}
                   disabled={
-                    ["Blocked", "Past", "Loading"].includes(state) || loading
+                    ["Blocked", "Past", "Loading", "Unavailable"].includes(state) || loading || !!error
                   }
                   onClick={() =>
                     state === "Full"
@@ -278,7 +292,6 @@ export function SchedulePicker({
           </p>
         </Panel>
       </div>
-      {error && <Alert type="error" message={error} />}
     </>
   );
 }

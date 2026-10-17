@@ -1,0 +1,64 @@
+const { test, after } = require('node:test');
+const assert = require('node:assert/strict');
+require('dotenv').config({ path: require('path').join(__dirname, '../server/.env'), quiet: true });
+const mongoose = require('mongoose');
+const base = process.env.API_BASE || 'http://127.0.0.1:4000/api';
+async function request(path, { token, body, method = body ? 'POST' : 'GET' } = {}) {
+  const response = await fetch(base + path, { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  return { status: response.status, data: await response.json() };
+}
+after(async () => mongoose.disconnect());
+test('Registration species/breeds/estimates, admin inbox, cancellation reasons, service rescheduling, and audit snapshots', async () => {
+  await mongoose.connect(process.env.MONGODB_URI);
+  const owner = (await request('/auth/login', { body: { email: 'ava@furpaws.test', password: 'FurPaws123' } })).data.token;
+  const admin = (await request('/auth/login', { body: { email: 'admin@furpaws.test', password: 'FurPaws123' } })).data.token;
+  const options = async species => (await request(`/pet-options?species=${species}`, { token: owner })).data.breeds;
+  assert((await options('Dog')).includes('Aspin'));
+  assert((await options('Cat')).includes('Puspin'));
+  assert(!(await options('Cat')).includes('Shih Tzu'));
+  assert(!(await options('Dog')).includes('Persian'));
+  const services = (await request('/services', { token: owner })).data;
+  const consultation = services.find(({ name }) => name === 'Consultation');
+  const vaccine = services.find(({ type }) => type === 'Vaccination');
+  let slot;
+  for (let offset = 20; offset < 80 && !slot; offset++) {
+    const day = new Date(); day.setUTCDate(day.getUTCDate() + offset);
+    const date = day.toISOString().slice(0, 10);
+    const slots = (await request(`/appointments/slots?date=${date}`, { token: owner })).data.slots;
+    const time = slots.find(({ status }) => status === 'Available')?.time;
+    if (time) slot = { date, time };
+  }
+  assert(slot);
+  const prefix = `Workflow fixes ${Date.now()}`;
+  const body = { bookingType: 'No record', service: consultation._id, ...slot, reasonForVisit: 'Owner reports reduced appetite and scratching for three days.', registration: { name: prefix, species: 'Cat', breed: 'Shih Tzu', birthDate: '2025-01-01' } };
+  assert.equal((await request('/appointments', { token: owner, body })).status, 400);
+  body.registration = { ...body.registration, species: 'Other', breed: 'Unknown' };
+  assert.equal((await request('/appointments', { token: owner, body })).status, 400);
+  body.registration.otherSpecies = 'Rabbit';
+  const booked = await request('/appointments', { token: owner, body }); assert.equal(booked.status, 201);
+  const id = booked.data._id; const petId = booked.data.pet;
+  const rawPet = (await request(`/pets/${petId}`, { token: admin })).data;
+  assert.equal(rawPet.otherSpecies, 'Rabbit'); assert.equal(rawPet.weight, undefined); assert.equal(rawPet.estimatedWeight, undefined);
+  const inbox = (await request('/notifications?scope=inbox', { token: admin })).data;
+  assert(inbox.some(({ appointment, title, read }) => appointment === id && /new appointment/i.test(title) && !read));
+  assert(!(await request('/notifications', { token: owner })).data.some(({ audience }) => audience === 'ADMIN'));
+  const notification = inbox.find(({ appointment }) => appointment === id);
+  assert.equal((await request(`/notifications/${notification._id}`, { token: owner, method: 'PATCH', body: { read: true } })).status, 404);
+  assert.equal((await request(`/notifications/${notification._id}`, { token: admin, method: 'PATCH', body: { read: true } })).status, 200);
+  assert.equal((await request(`/appointments/${id}`, { token: owner, method: 'PATCH', body: { status: 'Cancelled' } })).status, 400);
+  assert.equal((await request(`/appointments/${id}/decision`, { token: admin, body: { status: 'Approved' } })).status, 200);
+  const exclude = await request(`/appointments/slots?date=${slot.date}&excludeId=${id}`, { token: admin });assert.equal(exclude.status, 200);
+  const changed = await request(`/appointments/${id}`, { token: admin, method: 'PATCH', body: { ...slot, service: vaccine._id } }); assert.equal(changed.status, 200);assert.equal(changed.data.service, vaccine._id);assert.equal(changed.data.reasonForVisit, '');
+  const ownerBookings = (await request('/appointments', { token: owner })).data;assert.equal(ownerBookings.find(({ _id }) => _id === id).service._id, vaccine._id);
+  assert.equal((await request(`/appointments/${id}`, { token: admin, method: 'PATCH', body: { ...slot, service: consultation._id } })).status, 400);
+  const cancelled = await request(`/appointments/${id}`, { token: admin, method: 'PATCH', body: { status: 'Cancelled', cancellationReason: 'Veterinarian unavailable; owner was informed.' } });assert.equal(cancelled.status, 200);assert.match(cancelled.data.cancellationReason, /unavailable/);
+  const ownerNotifications = (await request('/notifications', { token: owner })).data;assert(ownerNotifications.some(({ message }) => message.includes('Veterinarian unavailable')));
+  const logs = (await request('/auditlogs', { token: admin })).data;assert(logs.some(({ record, before, after }) => record === id && before?.status === 'Pending' && after?.status === 'Approved'));
+  const estimated = await request('/appointments', { token: owner, body: { ...body, registration: { ...body.registration, name: `${prefix} estimate`, weight: 2.5 } } });assert.equal(estimated.status, 201);
+  const estimatePet = (await request(`/pets/${estimated.data.pet}`, { token: admin })).data;assert.equal(estimatePet.estimatedWeight, 2.5);assert.equal(estimatePet.weight, undefined);
+  assert.equal((await request('/medicines', { token: admin, body: { name: 'Should not save', unexpected: true } })).status, 400);
+  assert.equal((await request('/auth/register', { body: { name: 'Invalid', email: 'invalid@example.test', role: 'ADMIN' } })).status, 400);
+  const models = require('../server/models');
+  const testPets = await models.Pet.find({ name: new RegExp(`^${prefix}`) }); const petIds = testPets.map(({ _id }) => _id);
+  await models.Notification.deleteMany({ pet: { $in: petIds } });await models.Appointment.deleteMany({ pet: { $in: petIds } });await models.Pet.deleteMany({ _id: { $in: petIds } });
+});

@@ -2,129 +2,64 @@ import { Link } from "react-router-dom";
 import {
   ArrowRightOutlined,
   CalendarOutlined,
-  HeartOutlined,
   FileProtectOutlined,
+  HeartOutlined,
 } from "@ant-design/icons";
-import { DashboardIcon } from "../Shared/Dashboard";
-import { formatDate, formatTime } from "../../api";
+import { formatDate, formatTime, formatSpecies } from "../../api";
 
 export default function OwnerLanding({ user, pets, upcoming }) {
   const visit = upcoming.find(({ status }) => status === "Approved");
   const featured = pets.find(({ _id }) => _id === visit?.pet?._id) || pets[0];
+  const date = new Date().toLocaleDateString("en-PH", {
+    timeZone: "Asia/Manila",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
   return (
-    <>
-      <section className="owner-landing-hero">
-        <div className="owner-landing-copy">
-          <span className="portal-kicker">
-            <span /> YOUR PET’S HEALTH, CONNECTED
-          </span>
-          <p className="owner-welcome">
-            Welcome back, {user.name.split(" ")[0]}.
-          </p>
-          <h1>
-            Good care.
-            <br />
-            <em>Happy little paws.</em>
-          </h1>
-          <p className="owner-hero-description">
-            From the next checkup to every little milestone, keep your pet’s
-            care in one familiar place.
-          </p>
-          <div className="owner-hero-actions">
-            <Link className="button primary" to="/owner/U4">
-              <CalendarOutlined aria-hidden="true" /> Book an appointment{" "}
-              <ArrowRightOutlined aria-hidden="true" />
-            </Link>
-            <Link className="button" to="/owner/U3">
-              Meet my pets <HeartOutlined aria-hidden="true" />
-            </Link>
-          </div>
-          <div className="owner-trust">
-            <FileProtectOutlined aria-hidden="true" />
-            <span>Your pets’ medical history, safely in your account.</span>
-          </div>
+    <section className="owner-home-banner" aria-label="Your pet care overview">
+      <div className="owner-banner-copy">
+        <span className="owner-banner-eyebrow">MY PET CARE / OVERVIEW</span>
+        <h1>Hello, {user.name.split(" ")[0]}.</h1>
+        <p>{date} · Here’s your pets’ care overview.</p>
+        <div className="owner-banner-actions">
+          <Link className="button owner-banner-primary" to="/owner/U4">
+            <CalendarOutlined aria-hidden="true" /> Book an appointment
+          </Link>
+          <Link className="button owner-banner-secondary" to="/owner/U3?view=records">
+            <FileProtectOutlined aria-hidden="true" /> Medical records
+          </Link>
         </div>
-        <div className="owner-featured-pet">
-          <div className="owner-pet-art">
+      </div>
+      <div className="owner-banner-summary">
+        <Link
+          className="owner-current-pet"
+          to={featured ? `/owner/U3b/${featured._id}` : "/owner/U3"}
+        >
+          <span className="owner-current-pet-picture">
             {featured?.picture ? (
               <img src={featured.picture} alt={featured.name} />
             ) : (
-              <DashboardIcon name="pet" />
+              <HeartOutlined aria-hidden="true" />
             )}
-            <span className="owner-pet-badge">
-              <HeartOutlined aria-hidden="true" /> A little love. A lifetime of
-              care.
-            </span>
-          </div>
-          <div className="owner-visit-preview">
-            <span className="dashboard-icon">
-              <CalendarOutlined aria-hidden="true" />
-            </span>
-            <div>
-              <span className="portal-kicker">
-                {visit
-                  ? "YOUR NEXT APPROVED VISIT"
-                  : "LET’S PLAN THEIR NEXT VISIT"}
-              </span>
-              <strong>
-                {visit
-                  ? `${visit.pet?.name} · ${visit.service?.name}`
-                  : featured
-                    ? `${featured.name} deserves the best care`
-                    : "Your pet’s care starts here"}
-              </strong>
-              <p>
-                {visit
-                  ? `${formatDate(visit.date)} · ${formatTime(visit.time)}`
-                  : "Choose a service and a time that works for you."}
-              </p>
-            </div>
-            <Link
-              to={visit ? "/owner/U9" : "/owner/U4"}
-              aria-label={
-                visit ? "View upcoming appointments" : "Start booking"
-              }
-            >
-              <ArrowRightOutlined aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-      </section>
-      <section className="owner-care-path" aria-label="Your pet care shortcuts">
-        {[
-          {
-            number: "01",
-            icon: <HeartOutlined aria-hidden="true" />,
-            title: "Their story, all together",
-            text: "View your pets and their health information.",
-            to: "/owner/U3",
-          },
-          {
-            number: "02",
-            icon: <CalendarOutlined aria-hidden="true" />,
-            title: "Make time for good health",
-            text: "Book a visit or check appointment updates.",
-            to: "/owner/U4",
-          },
-          {
-            number: "03",
-            icon: <FileProtectOutlined aria-hidden="true" />,
-            title: "Every visit, remembered",
-            text: "Read consultation notes and vaccine history.",
-            to: "/owner/U3?view=records",
-          },
-        ].map(({ number, icon, title, text, to }) => (
-          <Link className="owner-care-step" key={number} to={to}>
-            <span className="care-step-number">{number}</span>
-            <span className="dashboard-icon">{icon}</span>
-            <div>
-              <strong>{title}</strong>
-              <p>{text}</p>
-            </div>
-            <ArrowRightOutlined aria-hidden="true" />
-          </Link>
-        ))}
-      </section>
-    </>
+          </span>
+          <span>
+            <span className="owner-banner-eyebrow">{featured ? "YOUR PET" : "YOUR PET FAMILY"}</span>
+            <strong>{featured?.name || "A healthier start, together"}</strong>
+            <span>{featured ? `${formatSpecies(featured)} · ${featured.breed}` : "Approved pet profiles appear here."}</span>
+          </span>
+          <ArrowRightOutlined aria-hidden="true" />
+        </Link>
+        <Link className="owner-banner-visit" to={visit ? "/owner/U9" : "/owner/U4"}>
+          <CalendarOutlined aria-hidden="true" />
+          <span>
+            <strong>{visit ? "Next approved visit" : "Plan your next visit"}</strong>
+            <span>{visit ? `${visit.pet?.name} · ${formatDate(visit.date)} · ${formatTime(visit.time)}` : "Choose a service and an available time."}</span>
+          </span>
+          <ArrowRightOutlined aria-hidden="true" />
+        </Link>
+      </div>
+    </section>
   );
 }

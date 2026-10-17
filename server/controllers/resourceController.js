@@ -6,6 +6,7 @@ const {
   transaction,
   getDoc,
   today,
+  assertFields,
 } = require("../utils/core");
 const resources = {
   medicines: [
@@ -80,6 +81,7 @@ const controllerFor = (resource) => {
   const createX = async (req, res) => {
     if (resource === "schedules")
       fail(409, "Edit the existing clinic schedule.");
+    assertFields(req.body, keys);
     const data = pick(req.body, keys);
     validate(resource, data);
     res.status(201).json(
@@ -99,6 +101,7 @@ const controllerFor = (resource) => {
     );
   };
   const updateX = async (req, res) => {
+    assertFields(req.body, keys);
     const data = pick(req.body, keys);
     validate(resource, data);
     res.json(
@@ -143,7 +146,7 @@ const controllerFor = (resource) => {
       )
         fail(
           409,
-          "This medicine has prescription history. Keep it for traceability.",
+          "This medicine is linked to historical clinical records. Keep it for traceability.",
         );
       await Model.deleteOne({ _id: record._id }, { session });
       await audit(
@@ -171,6 +174,7 @@ const getBills = async (req, res) =>
 const updateBill = async (req, res) =>
   res.json(
     await transaction(async (session) => {
+      assertFields(req.body, ["status", "paymentMethod"]);
       const bill = await getDoc(models.Bill, req.params.id, session);
       if (bill.status === "Paid")
         fail(409, "Payment has already been recorded.");
@@ -205,7 +209,11 @@ const getVaccinations = async (req, res) =>
 const getNotifications = async (req, res) =>
   res.json(
     await models.Notification.find(
-      req.user.role === "OWNER" ? { owner: req.user._id } : {},
+      req.user.role === "OWNER"
+        ? { owner: req.user._id, audience: { $ne: "ADMIN" } }
+        : req.query.scope === "inbox"
+          ? { owner: req.user._id, audience: "ADMIN" }
+          : { audience: { $ne: "ADMIN" } },
     )
       .populate("owner", "name")
       .sort({ createdAt: -1 }),
@@ -213,14 +221,15 @@ const getNotifications = async (req, res) =>
 const updateNotification = async (req, res) =>
   res.json(
     await transaction(async (session) => {
+      assertFields(req.body, ["read"]);
       const notification = await getDoc(
         models.Notification,
         req.params.id,
         session,
       );
       if (
-        req.user.role === "OWNER" &&
-        String(notification.owner) !== String(req.user._id)
+        String(notification.owner) !== String(req.user._id) ||
+        (req.user.role === "ADMIN" && notification.audience !== "ADMIN")
       )
         fail(404, "Notification not found.");
       const before = { read: notification.read };
@@ -239,7 +248,7 @@ const updateNotification = async (req, res) =>
     }),
   );
 const getAuditlogs = async (req, res) =>
-  res.json(await models.AuditLog.find().sort({ createdAt: -1 }).limit(1000));
+  res.json(await models.AuditLog.find().sort({ createdAt: -1 }));
 const getReports = async (req, res) => {
   const { start = "2000-01-01", end = today() } = req.query;
   if (

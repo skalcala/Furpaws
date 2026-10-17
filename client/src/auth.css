@@ -231,3 +231,8 @@
 #selected-bill {
   scroll-margin-top: calc(var(--headerHeight) + var(--space-panel));
 }
+.auth-reference .auth-card h1 { font-size: 28px; letter-spacing: -0.025em; }
+.auth-reference .auth-card > p, .auth-reference .ant-form-item-label > label { font-size: 14px; }
+.auth-reference .auth-card > .logo { max-width: 240px; }
+.auth-reference .ant-input, .auth-reference .ant-input-affix-wrapper { min-height: 44px; border-radius: 12px; }
+.auth-reference .ant-btn-primary { min-height: 44px; border-radius: 12px; }

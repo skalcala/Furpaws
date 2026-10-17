@@ -6,9 +6,16 @@ const appointments = require("../controllers/appointmentController");
 const consultations = require("../controllers/consultationController");
 const resources = require("../controllers/resourceController");
 const router = express.Router();
+const phoneVerification = require("../controllers/phoneVerificationController");
+router.get("/auth/config", phoneVerification.configuration);
+router.post("/auth/phone/send", phoneVerification.send);
+router.post("/auth/phone/check", phoneVerification.check);
 router.post("/auth/login", users.login);
 router.post("/auth/register", users.createUser);
 router.use(auth);
+router.get("/pet-options", async (req, res) =>
+  res.json(await require("../utils/petOptions").getBreeds(req.query.species)),
+);
 router.get("/users/me", users.getMe);
 router.patch("/users/me", users.updateUser);
 router.post("/users/me/password", users.changePassword);
@@ -28,6 +35,11 @@ router.post(
   appointments.decideAppointment,
 );
 router.get("/consultations", role("ADMIN"), consultations.getConsultations);
+router.post(
+  "/consultations/emergency",
+  role("ADMIN"),
+  consultations.startEmergency,
+);
 router.post(
   "/consultations/complete",
   role("ADMIN"),
@@ -54,7 +66,15 @@ router.patch(
   role("ADMIN"),
   require("../controllers/vaccinationController").updateVaccination,
 );
-router.get("/notifications", resources.getNotifications);
+router.get("/notifications", async (req, res, next) => {
+  try {
+    if (process.env.VERCEL)
+      await require("../utils/reminders").generateReminders();
+    return await resources.getNotifications(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
 router.patch("/notifications/:id", resources.updateNotification);
 router.get("/auditlogs", role("ADMIN"), resources.getAuditlogs);
 router.get("/reports", role("ADMIN"), resources.getReports);

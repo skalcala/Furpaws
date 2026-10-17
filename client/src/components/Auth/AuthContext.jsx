@@ -19,6 +19,10 @@ export function AuthProvider({ children }) {
   }, []);
   const login = async (values) => {
     const { data } = await api.post("/auth/login", values);
+    if(sessionStorage.getItem("furpawsSessionUserId")!==data.user._id){
+      sessionStorage.removeItem("furpawsDraft");sessionStorage.removeItem("furpawsConfirmation");
+    }
+    sessionStorage.setItem("furpawsSessionUserId",data.user._id);
     sessionStorage.setItem("furpawsToken", data.token);
     setUser(data.user);
     return data.user;

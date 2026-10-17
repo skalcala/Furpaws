@@ -1478,7 +1478,7 @@
         "url": "{{baseUrl}}/consultations/complete",
         "body": {
           "mode": "raw",
-          "raw": "{\"appointment\": \"{{appointmentId}}\", \"weight\": 4, \"diagnosis\": \"Wellness\", \"treatment\": \"Monitor\"}"
+          "raw": "{\"appointment\": \"{{appointmentId}}\", \"weight\": 4, \"diagnosis\": \"Wellness\", \"treatment\": \"Monitor\", \"followUp\": {\"enabled\": false}}"
         }
       },
       "event": [
@@ -1602,7 +1602,7 @@
         "url": "{{baseUrl}}/consultations/complete",
         "body": {
           "mode": "raw",
-          "raw": "{\"appointment\": \"{{appointmentId}}\", \"weight\": 4, \"diagnosis\": \"Routine wellness exam\", \"treatment\": \"Continue balanced diet\", \"prescriptions\": []}"
+          "raw": "{\"appointment\": \"{{appointmentId}}\", \"weight\": 4, \"diagnosis\": \"Routine wellness exam\", \"treatment\": \"Continue balanced diet\", \"followUp\": {\"enabled\": false}}"
         }
       },
       "event": [
@@ -1760,7 +1760,7 @@
         "url": "{{baseUrl}}/consultations/complete",
         "body": {
           "mode": "raw",
-          "raw": "{\"appointment\": \"{{appointmentId}}\", \"weight\": 4, \"diagnosis\": \"Duplicate\", \"treatment\": \"Monitor\"}"
+          "raw": "{\"appointment\": \"{{appointmentId}}\", \"weight\": 4, \"diagnosis\": \"Duplicate\", \"treatment\": \"Monitor\", \"followUp\": {\"enabled\": false}}"
         }
       },
       "event": [

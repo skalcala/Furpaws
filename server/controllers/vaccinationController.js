@@ -6,11 +6,13 @@ const {
   audit,
   transaction,
   today,
+  assertFields,
 } = require("../utils/core");
 const getVaccinations = require("./resourceController").getVaccinations;
 const updateVaccination = async (req, res) =>
   res.json(
     await transaction(async (session) => {
+      assertFields(req.body, ["vaccine", "dateGiven", "nextDueDate"]);
       const record = await getDoc(Vaccination, req.params.id, session);
       const before = record.toObject();
       Object.assign(

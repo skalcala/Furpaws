@@ -1,0 +1,150 @@
+[
+  {
+    "id": "25:801",
+    "name": "A1 \u2013 Dashboard"
+  },
+  {
+    "id": "25:1806",
+    "name": "A10 \u2013 Schedule Settings"
+  },
+  {
+    "id": "25:1869",
+    "name": "A11 \u2013 Billing & Payments"
+  },
+  {
+    "id": "25:1929",
+    "name": "A12 \u2013 Reports"
+  },
+  {
+    "id": "25:2019",
+    "name": "A13 \u2013 Expenses"
+  },
+  {
+    "id": "25:2183",
+    "name": "A14 \u2013 Notifications"
+  },
+  {
+    "id": "25:2231",
+    "name": "A15 \u2013 Audit Logs"
+  },
+  {
+    "id": "25:867",
+    "name": "A2 \u2013 Approvals"
+  },
+  {
+    "id": "25:927",
+    "name": "A2a \u2013 Approval Detail \u2013 No Record"
+  },
+  {
+    "id": "25:2763",
+    "name": "A2b \u2013 Approvals \u2013 Decline Reason Required"
+  },
+  {
+    "id": "25:992",
+    "name": "A3 \u2013 Appointments"
+  },
+  {
+    "id": "25:1168",
+    "name": "A4 \u2013 Today\u2019s Queue"
+  },
+  {
+    "id": "25:1481",
+    "name": "A5 \u2013 Consultation & Prescription \u2013 Service: Consultation"
+  },
+  {
+    "id": "95:2",
+    "name": "A5a \u2013 Consultation & Prescription \u2013 Service: Vaccination"
+  },
+  {
+    "id": "25:2657",
+    "name": "A5b \u2013 Prescription \u2013 Medicine Out of Stock"
+  },
+  {
+    "id": "25:2710",
+    "name": "A5c \u2013 Prescription \u2013 Medicine Expired"
+  },
+  {
+    "id": "25:1240",
+    "name": "A6 \u2013 Pets & Owners"
+  },
+  {
+    "id": "25:1297",
+    "name": "A6a \u2013 Owner Profile & Pets"
+  },
+  {
+    "id": "25:1360",
+    "name": "A6b \u2013 Pet Detail & Validation"
+  },
+  {
+    "id": "25:1405",
+    "name": "A6c \u2013 Pet Medical Records"
+  },
+  {
+    "id": "25:1676",
+    "name": "A7 \u2013 Vaccinations"
+  },
+  {
+    "id": "25:1596",
+    "name": "A8 \u2013 Medicine Inventory"
+  },
+  {
+    "id": "25:1738",
+    "name": "A9 \u2013 Services"
+  },
+  {
+    "id": "25:3",
+    "name": "U1 \u2013 Dashboard"
+  },
+  {
+    "id": "25:755",
+    "name": "U10 \u2013 Notifications"
+  },
+  {
+    "id": "25:78",
+    "name": "U2 \u2013 Owner Profile"
+  },
+  {
+    "id": "25:122",
+    "name": "U3 \u2013 My Pets"
+  },
+  {
+    "id": "25:2815",
+    "name": "U3a \u2013 My Pets \u2013 No Pets"
+  },
+  {
+    "id": "25:177",
+    "name": "U3b \u2013 Pet General Information"
+  },
+  {
+    "id": "25:220",
+    "name": "U3c \u2013 Pet Medical Records"
+  },
+  {
+    "id": "25:292",
+    "name": "U4 \u2013 Booking \u2013 Choose With Record or No Record"
+  },
+  {
+    "id": "25:369",
+    "name": "U5 \u2013 Booking \u2013 Pet Registration \u2013 No Record Only"
+  },
+  {
+    "id": "25:429",
+    "name": "U6 \u2013 Booking \u2013 Date, Time & Service"
+  },
+  {
+    "id": "25:2502",
+    "name": "U6a \u2013 Booking \u2013 Slot Is Full"
+  },
+  {
+    "id": "25:577",
+    "name": "U7 \u2013 Booking \u2013 Review & Submit"
+  },
+  {
+    "id": "25:627",
+    "name": "U8 \u2013 Booking \u2013 Confirmation \u2013 Pending"
+  },
+  {
+    "id": "25:671",
+    "name": "U9 \u2013 My Appointments"
+  }
+]

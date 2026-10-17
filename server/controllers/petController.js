@@ -6,6 +6,7 @@ const {
   audit,
   notify,
   transaction,
+  assertFields,
 } = require("../utils/core");
 const checkPet = async (user, id) => {
   const pet = await getDoc(Pet, id);
@@ -32,7 +33,7 @@ const getPet = async (req, res) => {
 const getRecords = async (req, res) => {
   const pet = await checkPet(req.user, req.params.id);
   const [consultations, vaccinations, appointments] = await Promise.all([
-    Consultation.find({ pet: pet._id })
+    Consultation.find({ pet: pet._id }).select("-prescriptions")
       .populate("admin", "name")
       .sort({ createdAt: -1 }),
     Vaccination.find({ pet: pet._id }),
@@ -49,7 +50,8 @@ const updatePet = async (req, res) => {
       const keys =
         req.user.role === "OWNER"
           ? ["picture"]
-          : ["name", "species", "breed", "birthDate", "picture"];
+          : ["name", "species", "otherSpecies", "breed", "birthDate", "picture"];
+      assertFields(req.body, keys);
       if (req.body.birthDate && new Date(req.body.birthDate) > new Date())
         fail(400, "Birth date cannot be in the future.", {
           birthDate: "Choose a past date.",
@@ -78,6 +80,7 @@ const updatePet = async (req, res) => {
 const approvePet = async (req, res) =>
   res.json(
     await transaction(async (session) => {
+      assertFields(req.body, ["status", "reason"]);
       const pet = await getDoc(Pet, req.params.id, session);
       if (pet.status !== "Pending")
         fail(409, "This pet has already been reviewed.");
@@ -87,6 +90,7 @@ const approvePet = async (req, res) =>
         fail(400, "A decline reason is required.", {
           reason: "Decline reason is required.",
         });
+      const before = pet.toObject();
       pet.status = req.body.status;
       pet.declineReason = req.body.reason;
       await pet.save({ session });
@@ -104,7 +108,7 @@ const approvePet = async (req, res) =>
         pet.status,
         "pets",
         pet._id,
-        undefined,
+        before,
         pet.toObject(),
         session,
       );

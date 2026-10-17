@@ -14,6 +14,13 @@ app.get("/api/health", (req, res) =>
       mongoose.connection.readyState === 1 ? "connected" : "disconnected",
   }),
 );
+app.get("/api/internal/reminders", async (req, res) => {
+  const secrets = [process.env.CRON_SECRET, process.env.REMINDER_JOB_SECRET].filter(Boolean);
+  if (!secrets.some(secret => req.headers.authorization === `Bearer ${secret}`))
+    return res.status(401).json({ message: "Unauthorized." });
+  await require("./utils/reminders").generateReminders();
+  res.json({ status: "ok" });
+});
 app.use("/api", require("./routes"));
 app.use("/api", (req, res) =>
   res.status(404).json({ message: "Endpoint not found." }),
@@ -59,7 +66,7 @@ const start = async () => {
   await generateReminders();
   setInterval(() => generateReminders().catch(console.error), 60000).unref();
   return app.listen(process.env.PORT || 4000, "127.0.0.1", () =>
-    console.log("FurPaws API: http://127.0.0.1:4000"),
+    console.log(`FurPaws API: http://127.0.0.1:${process.env.PORT || 4000}`),
   );
 };
 if (require.main === module)

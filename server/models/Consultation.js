@@ -11,6 +11,13 @@ const ConsultationSchema = new mongoose.Schema(
     diagnosis: text(false, 2000),
     treatment: text(false, 2000),
     notes: text(false, 2000),
+    followUp: {
+      enabled: { type: Boolean, default: false },
+      date: String,
+      purpose: text(false, 2000),
+      instructions: text(false, 2000),
+    },
+    // Historical records remain intact; new prescription creation is retired.
     prescriptions: [
       {
         medicine: ref("Medicine"),

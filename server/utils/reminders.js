@@ -1,5 +1,13 @@
 const { Appointment, Vaccination, Notification } = require("../models");
 const { today } = require("./core");
+// A cron request and an open inbox may generate the same reminder concurrently.
+async function upsertReminder(filter, update, options) {
+  try {
+    return await Notification.updateOne(filter, update, options);
+  } catch (error) {
+    if (error.code !== 11000 || !error.keyPattern?.dedupeKey) throw error;
+  }
+}
 async function generateReminders() {
   const now = new Date();
   const soon = new Date(now.valueOf() + 24 * 60 * 60 * 1000);
@@ -13,7 +21,7 @@ async function generateReminders() {
   for (const appointment of appointments) {
     const start = new Date(`${appointment.date}T${appointment.time}:00+08:00`);
     if (start <= now || start > soon) continue;
-    await Notification.updateOne(
+    await upsertReminder(
       {
         dedupeKey: `appointment:${appointment._id}:${appointment.date}:${appointment.time}`,
       },
@@ -34,7 +42,7 @@ async function generateReminders() {
     nextDueDate: { $gte: now, $lte: new Date(now.valueOf() + 7 * 86400000) },
   }).populate("pet");
   for (const vaccine of due)
-    await Notification.updateOne(
+    await upsertReminder(
       {
         dedupeKey: `vaccination:${vaccine._id}:${vaccine.nextDueDate.toISOString()}`,
       },

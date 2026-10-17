@@ -6,9 +6,17 @@ const PetSchema = new mongoose.Schema(
     owner: ref("User"),
     name: text(true, 80),
     species: { type: String, enum: ["Dog", "Cat", "Other"], required: true },
+    otherSpecies: text(false, 80),
     breed: text(true, 80),
-    birthDate: { type: Date, required: true },
-    weight: number(true, 500),
+    birthDate: {
+      type: Date,
+      required: function () {
+        return !this.emergencyRegistration;
+      },
+    },
+    emergencyRegistration: { type: Boolean, default: false },
+    weight: number(false, 500),
+    estimatedWeight: number(false, 500),
     picture: text(false, 3000000),
     status: {
       type: String,

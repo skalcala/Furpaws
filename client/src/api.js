@@ -10,7 +10,7 @@ api.interceptors.response.use(
   (error) => {
     if (
       error.response?.status === 401 &&
-      !error.config.url.includes("/auth/login")
+      !error.config.url.startsWith("/auth/")
     ) {
       sessionStorage.removeItem("furpawsToken");
       window.dispatchEvent(new Event("furpaws:logout"));
@@ -52,3 +52,11 @@ export const shortId = (id, prefix = "") =>
   `${prefix}${String(id || "")
     .slice(-6)
     .toUpperCase()}`;
+
+export const formatSpecies = ({ species, otherSpecies }) => species === "Other" ? otherSpecies || "Other" : species;
+export const formatPetWeight = ({ weight, estimatedWeight }) =>
+  weight != null ? `${weight} kg` : estimatedWeight != null ? `Approx. ${estimatedWeight} kg (owner estimate)` : "Not yet measured";
+
+export const isFollowUpService = service => /follow[ -]?up/i.test(service?.name || "");
+export const serviceLabel = service => isFollowUpService(service)?"Follow-up checkup":service?.name || "";
+export const formatPetAge = pet => pet.birthDate ? `${Math.max(0,Math.floor((Date.now()-new Date(pet.birthDate))/31557600000))} years` : "Age unknown";

@@ -5,6 +5,8 @@ const {
   today,
   audit,
   notify,
+  notifyAdmins,
+  assertFields,
   transaction,
   getDoc,
 } = require("../utils/core");
@@ -41,6 +43,7 @@ const slotState = async (date, time, schedule, session, excludeId) => {
     return "Blocked";
   const filter = {
     date,
+    source: { $ne: "Emergency" },
     status: { $in: ["Pending", "Approved", "Completed"] },
     ...(excludeId ? { _id: { $ne: excludeId } } : {}),
   };
@@ -69,11 +72,18 @@ const getSlots = async (req, res) => {
   const schedule = await Schedule.findOne({ key: "clinic" });
   if (!schedule) fail(503, "Clinic schedule is not configured.");
   const date = req.query.date || today();
+  let excludeId;
+  if (req.query.excludeId) {
+    if (req.user.role !== "ADMIN")
+      fail(403, "Only an Admin may preview a reschedule.");
+    const appointment = await getDoc(Appointment, req.query.excludeId);
+    excludeId = appointment._id;
+  }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) fail(400, "Choose a valid date.");
   const slots = await Promise.all(
     schedule.times.map(async (time) => ({
       time,
-      status: await slotState(date, time, schedule),
+      status: await slotState(date, time, schedule, null, excludeId),
     })),
   );
   res.json({ date, slots, capacity: schedule.capacity });
@@ -92,6 +102,15 @@ const getAppointments = async (req, res) =>
 const createAppointment = async (req, res) =>
   res.status(201).json(
     await transaction(async (session) => {
+      assertFields(req.body, [
+        "bookingType",
+        "date",
+        "time",
+        "service",
+        "pet",
+        "registration",
+        "reasonForVisit",
+      ]);
       const {
         bookingType,
         date,
@@ -105,10 +124,19 @@ const createAppointment = async (req, res) =>
         fail(400, "Choose a booking type.");
       const service = await getDoc(Service, serviceId, session);
       if (!service.active) fail(400, "This service is unavailable.");
+      const isFollowUp = /follow[ -]?up/i.test(service.name);
+      if (isFollowUp && bookingType !== "With record")
+        fail(
+          400,
+          "Follow-up checkups require an existing approved pet record.",
+          { service: "Choose a general consultation for a new pet." },
+        );
       const explanation =
         typeof reasonForVisit === "string" ? reasonForVisit.trim() : "";
       if (
-        (service.type === "Consultation" && explanation.length < 20) ||
+        (service.type === "Consultation" &&
+          !isFollowUp &&
+          explanation.length < 20) ||
         explanation.length > 2000 ||
         (reasonForVisit !== undefined && typeof reasonForVisit !== "string")
       ) {
@@ -120,6 +148,24 @@ const createAppointment = async (req, res) =>
               "Please give a detailed explanation using 20–2,000 characters.",
           },
         );
+      }
+      let estimatedWeight;
+      if (registration !== undefined)
+        assertFields(registration, [
+          "name",
+          "species",
+          "otherSpecies",
+          "breed",
+          "birthDate",
+          "weight",
+          "estimatedWeight",
+          "picture",
+        ]);
+      if (bookingType === "No record" && registration) {
+        estimatedWeight =
+          await require("../utils/petOptions").validatePetRegistration(
+            registration,
+          );
       }
       await validateSlot(date, time, session);
       let pet;
@@ -137,6 +183,32 @@ const createAppointment = async (req, res) =>
           fail(400, "Birth date cannot be in the future.", {
             birthDate: "Choose a past date.",
           });
+        const normalizedName = String(registration.name || "").trim();
+        const samePets = await Pet.find({
+          owner: req.user._id,
+          name: normalizedName,
+          species: registration.species,
+          ...(registration.species === "Other"
+            ? { otherSpecies: registration.otherSpecies }
+            : {}),
+          birthDate: registration.birthDate,
+        })
+          .collation({ locale: "en", strength: 2 })
+          .select("_id")
+          .session(session);
+        if (
+          samePets.length &&
+          (await Appointment.exists({
+            pet: { $in: samePets.map((p) => p._id) },
+            date,
+            time,
+            status: { $in: ["Pending", "Approved", "Completed"] },
+          }).session(session))
+        )
+          fail(
+            409,
+            "This pet already has a booking for the selected date and time.",
+          );
         const [created] = await Pet.create(
           [
             {
@@ -145,9 +217,10 @@ const createAppointment = async (req, res) =>
                 "species",
                 "breed",
                 "birthDate",
-                "weight",
+                "otherSpecies",
                 "picture",
               ]),
+              estimatedWeight,
               owner: req.user._id,
               status: "Pending",
             },
@@ -180,6 +253,15 @@ const createAppointment = async (req, res) =>
         ],
         { session },
       );
+      await notifyAdmins(
+        {
+          pet: pet._id,
+          appointment: appointment._id,
+          title: "New appointment request",
+          message: `${req.user.name} booked ${pet.name} for ${service.name} on ${date} at ${time}. Review the Pending booking in Approvals.`,
+        },
+        session,
+      );
       await audit(
         req.user,
         "Create",
@@ -195,6 +277,7 @@ const createAppointment = async (req, res) =>
 const decideAppointment = async (req, res) =>
   res.json(
     await transaction(async (session) => {
+      assertFields(req.body, ["status", "reason"]);
       const { status, reason } = req.body;
       if (!["Approved", "Declined"].includes(status))
         fail(400, "Choose Approve or Decline.");
@@ -208,6 +291,7 @@ const decideAppointment = async (req, res) =>
       const appointment = await getDoc(Appointment, req.params.id, session);
       if (appointment.status !== "Pending")
         fail(409, "This booking has already been reviewed.");
+      const before = appointment.toObject();
       if (status === "Approved") {
         await validateSlot(
           appointment.date,
@@ -217,6 +301,7 @@ const decideAppointment = async (req, res) =>
         );
         const pet = await getDoc(Pet, appointment.pet, session);
         if (pet.status !== "Approved") {
+          const beforePet = pet.toObject();
           pet.status = "Approved";
           await pet.save({ session });
           await audit(
@@ -224,7 +309,7 @@ const decideAppointment = async (req, res) =>
             "Approve",
             "pets",
             pet._id,
-            undefined,
+            beforePet,
             pet.toObject(),
             session,
           );
@@ -249,7 +334,7 @@ const decideAppointment = async (req, res) =>
         status === "Approved" ? "Approve" : "Decline",
         "appointments",
         appointment._id,
-        undefined,
+        before,
         appointment.toObject(),
         session,
       );
@@ -259,6 +344,14 @@ const decideAppointment = async (req, res) =>
 const updateAppointment = async (req, res) =>
   res.json(
     await transaction(async (session) => {
+      assertFields(req.body, [
+        "status",
+        "cancellationReason",
+        "date",
+        "time",
+        "service",
+        "reasonForVisit",
+      ]);
       const appointment = await getDoc(Appointment, req.params.id, session);
       if (
         req.user.role === "OWNER" &&
@@ -268,10 +361,58 @@ const updateAppointment = async (req, res) =>
       if (!["Pending", "Approved"].includes(appointment.status))
         fail(409, "Only Pending or Approved bookings may be changed.");
       const before = appointment.toObject();
-      if (req.body.status === "Cancelled") appointment.status = "Cancelled";
-      else {
+      if (req.body.status && req.body.status !== "Cancelled")
+        fail(400, "Only cancellation is allowed through this status change.");
+      if (
+        req.body.reasonForVisit !== undefined &&
+        typeof req.body.reasonForVisit !== "string"
+      )
+        fail(400, "Visit details must be text.");
+      if (req.body.status === "Cancelled") {
+        const reason =
+          typeof req.body.cancellationReason === "string"
+            ? req.body.cancellationReason.trim()
+            : "";
+        if (reason.length < 5 || reason.length > 500)
+          fail(400, "A cancellation reason is required (5–500 characters).", {
+            cancellationReason:
+              "Explain why this appointment is being cancelled (5–500 characters).",
+          });
+        appointment.status = "Cancelled";
+        appointment.cancellationReason = reason;
+        appointment.cancelledBy = req.user._id;
+        appointment.cancelledAt = new Date();
+      } else {
         if (req.user.role !== "ADMIN")
           fail(403, "Only an Admin may reschedule.");
+        if (appointment.source === "Emergency")
+          fail(
+            409,
+            "An emergency encounter cannot be rescheduled. Cancel it or complete the consultation.",
+          );
+        const service = await getDoc(
+          Service,
+          req.body.service || appointment.service,
+          session,
+        );
+        if (!service.active) fail(400, "Choose an active service.");
+        const isFollowUp = /follow[ -]?up/i.test(service.name);
+        if (isFollowUp && appointment.bookingType !== "With record")
+          fail(400, "Follow-up checkups require an existing pet record.");
+        const explanation = String(
+          req.body.reasonForVisit ?? appointment.reasonForVisit ?? "",
+        ).trim();
+        if (
+          service.type === "Consultation" &&
+          ((!isFollowUp && explanation.length < 20) ||
+            explanation.length > 2000)
+        )
+          fail(400, "Consultation details are required for this service.", {
+            reasonForVisit: "Use 20–2,000 characters to describe the visit.",
+          });
+        appointment.service = service._id;
+        appointment.reasonForVisit =
+          service.type === "Consultation" ? explanation : "";
         await validateSlot(
           req.body.date,
           req.body.time,
@@ -306,10 +447,20 @@ const updateAppointment = async (req, res) =>
           owner: appointment.owner,
           appointment: appointment._id,
           title: `Appointment ${appointment.status === "Cancelled" ? "cancelled" : "rescheduled"}`,
-          message: `${appointment.date} at ${appointment.time} · ${appointment.status}`,
+          message: `${appointment.date} at ${appointment.time} · ${appointment.status}${appointment.cancellationReason ? ` · Reason: ${appointment.cancellationReason}` : ""}`,
         },
         session,
       );
+      if (req.user.role === "OWNER")
+        await notifyAdmins(
+          {
+            appointment: appointment._id,
+            pet: appointment.pet,
+            title: "Owner cancelled an appointment",
+            message: `${req.user.name} cancelled the booking on ${appointment.date} at ${appointment.time}. Reason: ${appointment.cancellationReason}`,
+          },
+          session,
+        );
       return appointment;
     }),
   );

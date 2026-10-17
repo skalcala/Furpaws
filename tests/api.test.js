@@ -23,7 +23,7 @@ const request = async (
 after(async () => {
   await mongoose.disconnect();
 });
-test("Clinic flow, authorization, capacity, stock, and transaction rollback", async () => {
+test("Clinic flow, authorization, capacity, retired prescription rejection, and atomic completion", async () => {
   await mongoose.connect(process.env.MONGODB_URI);
   const {
     Appointment,
@@ -67,7 +67,7 @@ test("Clinic flow, authorization, capacity, stock, and transaction rollback", as
     404,
   );
   const services = (await request("/services", { token: owner })).data;
-  const service = services.find(({ type }) => type === "Consultation");
+  const service = services.find(({ name }) => name === "Consultation");
   let date = new Date();
   date.setUTCDate(date.getUTCDate() + 10);
   while ([0, 6].includes(date.getUTCDay()))
@@ -164,59 +164,33 @@ test("Clinic flow, authorization, capacity, stock, and transaction rollback", as
   );
   const meds = (await request("/medicines", { token: admin })).data;
   const med = meds.find(({ name }) => name === "Cephalexin 250 mg");
-  const empty = meds.find(({ quantity }) => quantity === 0);
-  const expired = meds.find(({ name }) => name === "Doxycycline 100 mg");
-  const rx = (medicine) => ({
-    medicine,
-    quantity: 2,
-    dosage: "1 tablet",
-    frequency: "Daily",
-    duration: "2 days",
-  });
   const completion = {
     appointment: id,
     weight: 4.1,
     diagnosis: "Routine exam",
     treatment: "Monitor",
     notes: "Follow care instructions",
-    prescriptions: [rx(med._id), rx(empty._id)],
   };
+  const rejected = await request("/consultations/complete", {token:admin,body:{...completion,prescriptions:[{medicine:med._id,quantity:2}]}});
+  assert.equal(rejected.status,400);
+  assert.equal((await Medicine.findById(med._id)).quantity,med.quantity);
+  assert.equal((await Appointment.findById(id)).status,"Approved");
+  assert.equal(await Bill.countDocuments({appointment:id}),0);
+  const done = await request("/consultations/complete", {
+    token: admin,
+    body: completion,
+  });
+  assert.equal(done.status, 201);
+  assert.equal(done.data.appointment.status, "Completed");
+  assert.equal((await Medicine.findById(med._id)).quantity, med.quantity);
+  assert.equal((await Pet.findById(petId)).weight, 4.1);
+  assert.equal((await Pet.findById(petId)).weightHistory.length, 1);
+  assert.equal(done.data.bill.total, service.fee);
   assert.equal(
     (
       await request("/consultations/complete", {
         token: admin,
         body: completion,
-      })
-    ).status,
-    409,
-  );
-  assert.equal((await Medicine.findById(med._id)).quantity, med.quantity);
-  assert.equal((await Appointment.findById(id)).status, "Approved");
-  assert.equal(await Bill.countDocuments({ appointment: id }), 0);
-  assert.equal(
-    (
-      await request("/consultations/complete", {
-        token: admin,
-        body: { ...completion, prescriptions: [rx(expired._id)] },
-      })
-    ).status,
-    409,
-  );
-  const done = await request("/consultations/complete", {
-    token: admin,
-    body: { ...completion, prescriptions: [rx(med._id)] },
-  });
-  assert.equal(done.status, 201);
-  assert.equal(done.data.appointment.status, "Completed");
-  assert.equal((await Medicine.findById(med._id)).quantity, med.quantity - 2);
-  assert.equal((await Pet.findById(petId)).weight, 4.1);
-  assert.equal((await Pet.findById(petId)).weightHistory.length, 1);
-  assert.equal(done.data.bill.total, service.fee + med.price * 2);
-  assert.equal(
-    (
-      await request("/consultations/complete", {
-        token: admin,
-        body: { ...completion, prescriptions: [] },
       })
     ).status,
     409,
@@ -307,5 +281,4 @@ test("Clinic flow, authorization, capacity, stock, and transaction rollback", as
     pet: { $in: ids },
   });
   await Pet.deleteMany({ _id: { $in: ids } });
-  await Medicine.updateOne({ _id: med._id }, { $inc: { quantity: 2 } });
 });

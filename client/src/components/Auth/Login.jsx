@@ -3,12 +3,18 @@ import { Alert, Button, Input, Form } from "antd";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { api, errorMessage } from "../../api";
+import PhoneVerification from "./PhoneVerification";
+import { useResource } from "../Shared/UI";
 import { Logo } from "../Shared/Layout";
 export default function Login() {
   const [searchParams, setSearchParams] = useSearchParams();
   const register = searchParams.get("mode") === "register";
   const setRegister = (value) =>
     setSearchParams(value ? { mode: "register" } : {});
+  const [form] = Form.useForm();
+  const phone = Form.useWatch("phone", form);
+  const configuration = useResource("/auth/config");
+  const [ticket, setTicket] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -19,7 +25,10 @@ export default function Login() {
     setError("");
     try {
       if (register) {
-        await api.post("/auth/register", values);
+        await api.post("/auth/register", {
+          ...values,
+          ...(ticket ? { phoneVerificationTicket: ticket } : {}),
+        });
         setRegister(false);
         setSuccess("Account created. Sign in to book your first appointment.");
       } else {
@@ -53,7 +62,16 @@ export default function Login() {
             </p>
             {error && <Alert type="error" showIcon message={error} />}{" "}
             {success && <Alert type="success" message={success} />}
-            <Form layout="vertical" onFinish={submit} requiredMark={false}>
+            <Form
+              key={register ? "register" : "login"}
+              form={form}
+              layout="vertical"
+              onFinish={submit}
+              requiredMark={false}
+              onValuesChange={(changed) => {
+                if (changed.phone) setTicket("");
+              }}
+            >
               {register && (
                 <>
                   <Form.Item
@@ -81,8 +99,18 @@ export default function Login() {
                       },
                     ]}
                   >
-                    <Input autoComplete="tel" />
+                    <Input autoComplete="tel" inputMode="tel" />
                   </Form.Item>
+                  {configuration.data.phoneOtpEnabled ? (
+                    <PhoneVerification phone={phone} onVerified={setTicket} />
+                  ) : (
+                    !configuration.loading && (
+                      <p className="muted">
+                        SMS verification is currently unavailable. You can
+                        continue with email and password.
+                      </p>
+                    )
+                  )}
                   <Form.Item
                     label="Address"
                     name="address"
@@ -93,17 +121,24 @@ export default function Login() {
                 </>
               )}
               <Form.Item
-                label="Email"
-                name="email"
+                label={register ? "Email" : "Email or mobile number"}
+                name={register ? "email" : "identifier"}
                 rules={[
                   {
                     required: true,
-                    type: "email",
-                    message: "Enter a valid email address.",
+                    ...(register ? { type: "email" } : {}),
+                    message: register
+                      ? "Enter a valid email address."
+                      : "Enter your email or PH mobile number.",
                   },
                 ]}
               >
-                <Input autoComplete="email" />
+                <Input
+                  autoComplete={register ? "email" : "username"}
+                  placeholder={
+                    register ? "you@example.com" : "Email or 09XXXXXXXXX"
+                  }
+                />
               </Form.Item>
               <Form.Item
                 label="Password"
@@ -125,7 +160,17 @@ export default function Login() {
                   autoComplete={register ? "new-password" : "current-password"}
                 />
               </Form.Item>
-              <Button type="primary" htmlType="submit" block loading={busy}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                block
+                loading={busy}
+                disabled={
+                  register &&
+                  (configuration.loading ||
+                    (configuration.data.phoneOtpEnabled && !ticket))
+                }
+              >
                 {register ? "Create account" : "Sign in"}
               </Button>
             </Form>
@@ -134,6 +179,9 @@ export default function Login() {
               onClick={() => {
                 setRegister(!register);
                 setError("");
+                setSuccess("");
+                setTicket("");
+                form.resetFields();
               }}
             >
               {register

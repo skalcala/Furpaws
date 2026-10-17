@@ -16,8 +16,11 @@
     "db:start": "node scripts/local-db.js",
     "test": "node --test tests/*.test.js",
     "test:postman": "newman run tests/FurPaws.postman_collection.json --env-var baseUrl=http://127.0.0.1:4000/api",
-    "test:browser": "node tests/browser.cjs",
-    "test:revision": "node tests/revision-browser.cjs"
+    "test:browser": "node tests/ui-workflow.cjs",
+    "test:revision": "node tests/ui-workflow.cjs",
+    "demo": "node scripts/demo.js",
+    "test:workflow": "node scripts/test-workflow.cjs",
+    "test:ui:workflow": "node tests/ui-workflow.cjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.0",
@@ -26,5 +29,8 @@
   },
   "overrides": {
     "react-refresh": "0.11.0"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

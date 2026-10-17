@@ -1,3 +1,4 @@
+import NumericInput from "../Shared/NumericInput";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -5,7 +6,6 @@ import {
   Button,
   Form,
   Input,
-  InputNumber,
   Modal,
   Select,
   Switch,
@@ -157,8 +157,8 @@ export function AdminDashboard() {
               { label: "Pets & Owners", to: "/admin/A6", icon: "pet" },
               { label: "Appointments", to: "/admin/A3", icon: "calendar" },
               {
-                label: "Prescriptions",
-                to: "/admin/A5?tab=prescriptions",
+                label: "Follow-up Checkups",
+                to: "/admin/A5?tab=followups",
                 icon: "record",
               },
               { label: "Medicines", to: "/admin/A8", icon: "pill" },
@@ -286,6 +286,8 @@ export function Owners() {
     <>
       <PageHeading
         title={id ? "Owner Profile & Pets" : "Pets & Owners · Owner List"}
+        backTo={id ? "/admin/A6" : undefined}
+        backLabel="Back to Owners"
       />
       <RequestState {...users} retry={users.refresh}>
         {id ? (
@@ -296,7 +298,8 @@ export function Owners() {
                   entries={[
                     ["Name", owner.name],
                     ["Contact number", owner.phone],
-                    ["Email", owner.email],
+                    ["Email", owner.email || "Not provided"],
+                    ["Account",owner.accountType==="guest"?"Guest contact · no login account":"Registered owner"],
                     ["Address", owner.address],
                   ]}
                 />
@@ -323,7 +326,7 @@ export function Owners() {
                 { title: "Owner", dataIndex: "name" },
                 {
                   title: "Contact details",
-                  render: (_, { phone, email }) => `${phone} · ${email}`,
+                  render: (_, { phone, email }) => [phone,email].filter(Boolean).join(" · ") || "No contact details provided",
                 },
                 {
                   title: "Their pets",
@@ -601,7 +604,7 @@ export function ResourceManager({ resource }) {
               ]}
             >
               {type === "number" ? (
-                <InputNumber
+                <NumericInput
                   min={0}
                   max={10000000}
                   precision={
@@ -785,7 +788,7 @@ export function ScheduleSettings() {
                 label={label}
                 rules={[{ required: true, type: "number", min: 1, max }]}
               >
-                <InputNumber min={1} max={max} precision={0} />
+                <NumericInput min={1} max={max} precision={0} />
               </Form.Item>
             ))}
           </div>
@@ -809,7 +812,7 @@ export function ScheduleSettings() {
             <div className="hours-edit" key={day}>
               <strong>{weekdays[day]}</strong>
               <Form.Item name={["hours", index, "day"]} hidden>
-                <InputNumber />
+                <NumericInput />
               </Form.Item>
               <Form.Item
                 name={["hours", index, "open"]}
@@ -991,47 +994,6 @@ export function Billing() {
       <RequestState {...records} retry={records.refresh}>
         {bill ? (
           <>
-            <Panel title="Billing records" className="no-print">
-              <DataTable
-                data={records.data}
-                columns={[
-                  {
-                    title: "Bill",
-                    render: (_, { _id }) => shortId(_id, "BILL-"),
-                  },
-                  { title: "Pet", render: (_, { pet }) => pet?.name },
-                  { title: "Owner", render: (_, { owner }) => owner?.name },
-                  {
-                    title: "Created",
-                    dataIndex: "createdAt",
-                    render: formatDate,
-                  },
-                  { title: "Total", dataIndex: "total", render: money },
-                  {
-                    title: "Status",
-                    render: (_, { status }) => <Status value={status} />,
-                  },
-                  {
-                    title: "Action",
-                    render: (_, { _id }) => (
-                      <Button
-                        onClick={() => {
-                          setSelected(_id);
-                          document
-                            .getElementById("selected-bill")
-                            ?.scrollIntoView({
-                              behavior: "smooth",
-                              block: "start",
-                            });
-                        }}
-                      >
-                        View bill
-                      </Button>
-                    ),
-                  },
-                ]}
-              />
-            </Panel>
             <Select
               showSearch
               optionFilterProp="label"
@@ -1044,7 +1006,22 @@ export function Billing() {
               }))}
             />
             <div className="print-area" id="selected-bill">
-              <Panel title={`Bill ${shortId(bill._id, "BILL-")}`}>
+              <Panel
+                title={`${bill.status === "Unpaid" ? "Process payment" : "Payment receipt"} · ${shortId(bill._id, "BILL-")}`}
+                action={
+                  <Button
+                    className="no-print"
+                    onClick={() =>
+                      document.querySelector(".billing-records")?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      })
+                    }
+                  >
+                    ← Back to Billing Records
+                  </Button>
+                }
+              >
                 <Details
                   entries={[
                     [
@@ -1056,6 +1033,7 @@ export function Billing() {
                   ]}
                 />
                 <DataTable
+                  paginate={false}
                   data={bill.items}
                   columns={[
                     { title: "Bill item", dataIndex: "name" },
@@ -1092,13 +1070,53 @@ export function Billing() {
                 )}
                 <Button
                   className="no-print"
-                  disabled={bill.status !== "Paid"}
                   onClick={() => window.print()}
                 >
-                  Print Receipt
+                  {bill.status === "Paid" ? "Print Receipt" : "Print Bill"}
                 </Button>
               </Panel>
             </div>
+            <Panel title="Billing records" className="no-print billing-records">
+              <DataTable
+                data={records.data}
+                columns={[
+                  {
+                    title: "Bill",
+                    render: (_, { _id }) => shortId(_id, "BILL-"),
+                  },
+                  { title: "Pet", render: (_, { pet }) => pet?.name },
+                  { title: "Owner", render: (_, { owner }) => owner?.name },
+                  {
+                    title: "Created",
+                    dataIndex: "createdAt",
+                    render: formatDate,
+                  },
+                  { title: "Total", dataIndex: "total", render: money },
+                  {
+                    title: "Status",
+                    render: (_, { status }) => <Status value={status} />,
+                  },
+                  {
+                    title: "Action",
+                    render: (_, { _id }) => (
+                      <Button
+                        onClick={() => {
+                          setSelected(_id);
+                          window.requestAnimationFrame(() => document
+                            .getElementById("selected-bill")
+                            ?.scrollIntoView({
+                              behavior: "smooth",
+                              block: "start",
+                            }));
+                        }}
+                      >
+                        View bill
+                      </Button>
+                    ),
+                  },
+                ]}
+              />
+            </Panel>
             <Note>
               This bill was created when the consultation was saved and
               completed. Confirm payment status and method before printing.
@@ -1209,6 +1227,8 @@ export function Reports() {
   );
 }
 export function AuditLogs() {
+  const [detail, setDetail] = useState(null);
+  const safeSnapshot = value => JSON.stringify(value, (key, item) => /password|token|secret|picture/i.test(key) ? "[hidden]" : item, 2);
   const records = useResource("/auditlogs");
   return (
     <>
@@ -1233,9 +1253,17 @@ export function AuditLogs() {
                   timeZone: "Asia/Manila",
                 }),
             },
+            { title: "Details", render: (_, record) => <Button onClick={() => setDetail(record)}>View changes</Button> },
           ]}
         />
       </RequestState>
+      <Modal title="Audit change details" open={!!detail} width={900} onCancel={() => setDetail(null)} footer={<Button onClick={() => setDetail(null)}>Back to Audit Logs</Button>}>
+        <p>{detail?.actorName} · {detail?.action} · {detail?.resource}</p>
+        <div className="two-columns audit-snapshots">
+          <Panel title="Before"><pre>{detail?.before ? safeSnapshot(detail.before) : "No previous snapshot: a new record or an older audit entry."}</pre></Panel>
+          <Panel title="After"><pre>{detail?.after ? safeSnapshot(detail.after) : "No new snapshot: a deleted record or an older audit entry."}</pre></Panel>
+        </div>
+      </Modal>
       <Note>
         Approvals, declines, edits, deletes, and stock changes create audit
         entries. Audit logs are read only.

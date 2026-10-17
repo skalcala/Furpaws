@@ -1,6 +1,9 @@
+import PictureUpload from "../Shared/PictureUpload";
+import PhoneVerification from "../Auth/PhoneVerification";
 import OwnerLanding from "./OwnerLanding";
 import { NotificationFeed } from "../Shared/NotificationCenter";
 import {
+  ArrowLeftOutlined,
   UserOutlined,
   MailOutlined,
   PhoneOutlined,
@@ -12,9 +15,7 @@ import {
 import {
   MetricCard,
   DashboardCard,
-  ShortcutGrid,
   StatusRing,
-  SnapshotRows,
   ReminderTiles,
   DashboardNotice,
   DashboardIcon,
@@ -27,12 +28,16 @@ import {
   dayKey,
   errorMessage,
   formatDate,
+  formatPetWeight,
+  formatPetAge,
+  formatSpecies,
   formatTime,
   shortId,
 } from "../../api";
 import { useAuth } from "../Auth/AuthContext";
 import {
   DataTable,
+  Field,
   Details,
   Note,
   Panel,
@@ -47,7 +52,7 @@ const pageDescriptions = {
   U3: "A familiar place for your pets and their health stories.",
   U3a: "Register your pet to begin their clinic care journey.",
   U3b: "Your pet’s profile and current health information.",
-  U3c: "Consultation notes, prescriptions, and vaccination history.",
+  U3c: "Consultation notes, follow-up plans, and vaccination history.",
   U4: "Let’s plan your pet’s next visit, one step at a time.",
   U5: "Tell us about the pet you’re bringing to the clinic.",
   U6: "Choose a service and an available clinic appointment.",
@@ -58,7 +63,7 @@ const pageDescriptions = {
   A2: "Review booking requests and the pet details that need approval.",
   A3: "Organize upcoming visits and manage appointment updates.",
   A4: "Keep today’s approved appointments moving through care.",
-  A5: "Consultations, clinical findings, and prescription history.",
+  A5: "Consultations, clinical findings, and follow-up checkups.",
   A6: "Owner contact details, pet profiles, and medical information.",
   A7: "Track vaccinations, administered doses, and next due dates.",
   A8: "Manage medicine stock, expiry dates, and inventory levels.",
@@ -70,7 +75,7 @@ const pageDescriptions = {
   A14: "Review the full history of messages sent to pet owners.",
   A15: "A traceable record of approvals and changes in the clinic.",
 };
-export function PageHeading({ title }) {
+export function PageHeading({ title, backTo, backLabel = "Back", onBack }) {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const screen = pathname.split("/")[2];
@@ -90,15 +95,31 @@ export function PageHeading({ title }) {
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
-      <span className="page-date">
-        <DashboardIcon name="calendar" />
-        {new Date().toLocaleDateString("en-PH", {
-          timeZone: "Asia/Manila",
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })}
-      </span>
+      <div className="page-heading-actions">
+        {backTo &&
+          (onBack ? (
+            <Button
+              className="page-back"
+              onClick={onBack}
+              icon={<ArrowLeftOutlined />}
+            >
+              {backLabel}
+            </Button>
+          ) : (
+            <Link className="button page-back" to={backTo}>
+              <ArrowLeftOutlined aria-hidden="true" /> {backLabel}
+            </Link>
+          ))}
+        <span className="page-date">
+          <DashboardIcon name="calendar" />
+          {new Date().toLocaleDateString("en-PH", {
+            timeZone: "Asia/Manila",
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
+        </span>
+      </div>
     </div>
   );
 }
@@ -129,7 +150,7 @@ export function OwnerDashboard() {
   );
   const unread = notifications.data.filter(({ read }) => !read);
   return (
-    <div className="dashboard-page">
+    <div className="dashboard-page owner-home">
       <DashboardNotice resources={[appointments, notifications, pets]} />
       <OwnerLanding user={user} pets={pets.data} upcoming={upcoming} />
       <div className="dashboard-metrics">
@@ -213,25 +234,12 @@ export function OwnerDashboard() {
                 <Status value={status} />
               </div>
             ))}
+          <p className="owner-visit-guidance">
+            Bring current medicines and arrive 10 minutes before your visit.
+          </p>
           <Link className="button dashboard-wide-button" to="/owner/U9">
             View My Appointments
           </Link>
-        </DashboardCard>
-        <DashboardCard eyebrow="Shortcuts" title="Quick Links">
-          <ShortcutGrid
-            items={[
-              { label: "Book Appointment", to: "/owner/U4", icon: "calendar" },
-              { label: "My Pets", to: "/owner/U3", icon: "pet" },
-              {
-                label: "Medical Records",
-                to: "/owner/U3?view=records",
-                icon: "record",
-              },
-              { label: "Appointments", to: "/owner/U9", icon: "clock" },
-              { label: "Notifications", to: "/owner/U10", icon: "bell" },
-              { label: "My Profile", to: "/owner/U2", icon: "profile" },
-            ]}
-          />
         </DashboardCard>
         <DashboardCard
           eyebrow="Care overview"
@@ -256,31 +264,6 @@ export function OwnerDashboard() {
               Completed visit records are available in your pet’s medical
               history.
             </span>
-          </div>
-        </DashboardCard>
-        <DashboardCard eyebrow="Overview" title="Pet Care Snapshot">
-          <SnapshotRows
-            items={[
-              {
-                title: `${pets.data.length} approved pets`,
-                text: "Your pets’ clinic records",
-                icon: "pet",
-              },
-              {
-                title: `${upcoming.length} upcoming visits`,
-                text: "Pending or approved appointments",
-                icon: "calendar",
-              },
-              {
-                title: `${reminders.length} care reminders`,
-                text: "Clinic messages and due dates",
-                icon: "bell",
-              },
-            ]}
-          />
-          <div className="dashboard-advisory">
-            Bring your pet’s current medicines and arrive 10 minutes before your
-            scheduled time.
           </div>
         </DashboardCard>
         <DashboardCard
@@ -333,18 +316,24 @@ export function OwnerDashboard() {
 }
 export function OwnerProfile({ embedded = false }) {
   const { user, setUser } = useAuth();
+  const configuration = useResource("/auth/config");
+  const [phoneTicket, setPhoneTicket] = useState("");
   const [mode, setMode] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  const profilePhone = Form.useWatch("phone", form);
   const submit = async (values) => {
     setBusy(true);
     setError("");
     try {
       if (mode === "password") await api.post("/users/me/password", values);
       else {
-        const { data } = await api.patch("/users/me", values);
+        const { data } = await api.patch("/users/me", {
+          ...values,
+          ...(phoneTicket ? { phoneVerificationTicket: phoneTicket } : {}),
+        });
         setUser(data);
       }
       setMode(null);
@@ -451,7 +440,14 @@ export function OwnerProfile({ embedded = false }) {
         destroyOnHidden
       >
         {error && <Alert type="error" message={error} />}
-        <Form form={form} layout="vertical" onFinish={submit}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={submit}
+          onValuesChange={(changed) => {
+            if (changed.phone) setPhoneTicket("");
+          }}
+        >
           {mode === "password" ? (
             <>
               <Form.Item
@@ -498,6 +494,16 @@ export function OwnerProfile({ embedded = false }) {
               >
                 <Input />
               </Form.Item>
+              {configuration.data.phoneOtpEnabled &&
+                profilePhone &&
+                (!user.phoneVerified ||
+                  profilePhone.replace(/^0/, "+63") !==
+                    user.phone.replace(/^0/, "+63")) && (
+                  <PhoneVerification
+                    phone={profilePhone}
+                    onVerified={setPhoneTicket}
+                  />
+                )}
               <Form.Item
                 label="Email"
                 name="email"
@@ -537,9 +543,11 @@ export function PetCards({ pets, admin = false, select, selected }) {
             _id,
             name,
             species,
+            otherSpecies,
             breed,
             status,
             weight,
+            estimatedWeight,
             picture,
             birthDate,
           }) => (
@@ -555,17 +563,12 @@ export function PetCards({ pets, admin = false, select, selected }) {
                 <div className="pet-card-info">
                   <h2>{name}</h2>
                   <p>
-                    {species} · {breed}
+                    {formatSpecies({ species, otherSpecies })} · {breed}
                   </p>
                   <Status value={status} />
                   <p>
-                    {Math.max(
-                      0,
-                      Math.floor(
-                        (Date.now() - new Date(birthDate)) / 31557600000,
-                      ),
-                    )}{" "}
-                    years · {weight} kg
+                    {formatPetAge({ birthDate })} ·{" "}
+                    {formatPetWeight({ weight, estimatedWeight })}
                   </p>
                   {select ? (
                     <Button
@@ -658,25 +661,19 @@ export function PetDetail({ admin = false }) {
       setBusy(false);
     }
   };
-  const upload = async ({ target }) => {
-    const file = target.files[0];
-    if (!file) return;
-    if (
-      file.size > 2000000 ||
-      !["image/png", "image/jpeg", "image/webp"].includes(file.type)
-    ) {
-      message.error("Use a JPG, PNG, or WebP image up to 2 MB.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => save({ picture: reader.result });
-    reader.readAsDataURL(file);
-  };
   const data = pet.data;
   return (
     <>
       <PageHeading
         title={admin ? "Pet Detail & Validation" : "Pet General Information"}
+        backTo={
+          admin
+            ? data.owner?._id
+              ? `/admin/A6a/${data.owner._id}`
+              : "/admin/A6"
+            : "/owner/U3"
+        }
+        backLabel={admin ? "Back to Pets & Owners" : "Back to My Pets"}
       />
       <RequestState {...pet} retry={pet.refresh}>
         <Panel
@@ -685,35 +682,21 @@ export function PetDetail({ admin = false }) {
         >
           <div className="pet-identity">
             <div>
-              {data.picture && (
-                <img
-                  className="detail-picture"
-                  src={data.picture}
-                  alt={data.name}
-                />
-              )}
-              <label className="button upload-label">
-                {busy ? "Uploading…" : "Update picture"}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={upload}
-                  disabled={busy}
-                />
-              </label>
+              <PictureUpload
+                value={data.picture}
+                disabled={busy}
+                onChange={(picture) => save({ picture })}
+              />
             </div>
             <div className="grow">
               <h2>General information</h2>
               <Details
                 entries={[
                   ["Name", data.name],
-                  ["Species", data.species],
+                  ["Species", formatSpecies(data)],
                   ["Breed", data.breed],
-                  ["Current weight", `${data.weight} kg`],
-                  [
-                    "Age",
-                    `${Math.max(0, Math.floor((Date.now() - new Date(data.birthDate)) / 31557600000))} years`,
-                  ],
+                  ["Current / estimated weight", formatPetWeight(data)],
+                  ["Age", formatPetAge(data)],
                   ["Date of birth", formatDate(data.birthDate)],
                   ...(admin
                     ? [
@@ -818,9 +801,9 @@ export function PetDetail({ admin = false }) {
             </Form.Item>
           ))}
           <Form.Item
-            label="Birth date"
+            label={data.emergencyRegistration?"Birth date (if known)":"Birth date"}
             name="birthDate"
-            rules={[{ required: true }]}
+            rules={[{ required: !data.emergencyRegistration }]}
           >
             <Input type="date" max={dayKey()} />
           </Form.Item>
@@ -843,10 +826,9 @@ export function MedicalRecords({ admin = false }) {
   const data = records.data;
   const { message } = App.useApp();
   const consultations = data.consultations || [];
-  const prescriptions = consultations.flatMap(
-    ({ prescriptions, admin: clinician, createdAt }) =>
-      prescriptions.map((rx) => ({ ...rx, admin: clinician?.name, createdAt })),
-  );
+  const followUps = consultations
+    .filter((record) => record.followUp?.enabled)
+    .map((record) => ({ ...record, ...record.followUp }));
   const save = async (values) => {
     setBusy(true);
     try {
@@ -867,12 +849,14 @@ export function MedicalRecords({ admin = false }) {
     { title: "Admin", render: (_, { admin: clinician }) => clinician?.name },
   ];
   let rows = consultations;
-  if (tab === "Prescriptions") {
-    rows = prescriptions;
-    columns = ["name", "dosage", "frequency", "duration"].map((key) => ({
-      title: key === "name" ? "Medicine" : key[0].toUpperCase() + key.slice(1),
-      dataIndex: key,
-    }));
+  if (tab === "Follow-up Plans") {
+    rows = followUps;
+    columns = [
+      { title: "Suggested checkup", dataIndex: "date", render: formatDate },
+      { title: "Purpose", dataIndex: "purpose" },
+      { title: "Care instructions", dataIndex: "instructions" },
+      { title: "Admin", render: (_, record) => record.admin?.name },
+    ];
   }
   if (tab === "Vaccinations") {
     rows = data.vaccinations || [];
@@ -911,6 +895,8 @@ export function MedicalRecords({ admin = false }) {
     <>
       <PageHeading
         title={`Pet Medical Records${admin ? "" : " · View Only"}`}
+        backTo={`/${admin ? "admin/A6b" : "owner/U3b"}/${id}`}
+        backLabel="Back to Pet Profile"
       />
       <RequestState {...records} retry={records.refresh}>
         <Panel
@@ -926,14 +912,14 @@ export function MedicalRecords({ admin = false }) {
             items={[
               "Diagnoses",
               "Treatment History",
-              "Prescriptions",
+              "Follow-up Plans",
               "Vaccinations",
               "Weight History",
               "Admin Notes",
               "Previous Appointments",
             ].map((label) => ({ key: label, label }))}
           />
-          <DataTable columns={columns} data={rows} />
+          <DataTable key={tab} columns={columns} data={rows} />
           {admin && consultations.length > 0 && (
             <Button
               onClick={() => {
@@ -947,21 +933,34 @@ export function MedicalRecords({ admin = false }) {
           )}
         </Panel>
         <div className="two-columns">
-          <Panel title="Latest prescription">
-            {prescriptions[0] ? (
+          <Panel title="Latest follow-up plan">
+            {followUps[0] ? (
               <Details
-                entries={["name", "dosage", "frequency", "duration"].map(
-                  (key) => [key, prescriptions[0][key]],
-                )}
+                entries={[
+                  ["Suggested checkup", formatDate(followUps[0].date)],
+                  ["Purpose", followUps[0].purpose],
+                  [
+                    "Care instructions",
+                    followUps[0].instructions ||
+                      "Follow the clinic’s instructions.",
+                  ],
+                ]}
               />
             ) : (
-              <p>No prescription recorded.</p>
+              <p>No follow-up checkup recommended.</p>
             )}
+            <p className="muted">
+              A suggested date does not reserve a slot. Book an available
+              appointment when a return visit is needed.
+            </p>
           </Panel>
           <Panel title="Vaccinations and weight">
             <Details
               entries={[
-                ["Current weight", `${data.pet?.weight} kg`],
+                [
+                  "Current / estimated weight",
+                  data.pet ? formatPetWeight(data.pet) : "—",
+                ],
                 [
                   "Latest vaccine",
                   data.vaccinations?.at(-1)?.vaccine || "None",
@@ -1001,8 +1000,8 @@ export function MedicalRecords({ admin = false }) {
             </Form.Item>
           ))}
           <Note>
-            Prescription and billing history remain attached to the original
-            completed visit.
+            Billing and weight history remain attached to the original completed
+            visit.
           </Note>
           <Button type="primary" htmlType="submit" loading={busy}>
             Save Changes
@@ -1016,12 +1015,21 @@ export function OwnerAppointments() {
   const resource = useResource("/appointments");
   const [tab, setTab] = useState("Upcoming");
   const [cancel, setCancel] = useState(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancelError, setCancelError] = useState("");
   const [busy, setBusy] = useState(false);
   const { message } = App.useApp();
   const handleCancel = async () => {
+    if (cancellationReason.trim().length < 5) {
+      setCancelError("Enter a cancellation reason (5–500 characters).");
+      return;
+    }
     setBusy(true);
     try {
-      await api.patch(`/appointments/${cancel._id}`, { status: "Cancelled" });
+      await api.patch(`/appointments/${cancel._id}`, {
+        status: "Cancelled",
+        cancellationReason: cancellationReason.trim(),
+      });
       setCancel(null);
       await resource.refresh();
       message.success("Appointment cancelled.");
@@ -1073,7 +1081,15 @@ export function OwnerAppointments() {
               title: tab === "Upcoming" ? "Action" : "Details",
               render: (_, record) =>
                 ["Pending", "Approved"].includes(record.status) ? (
-                  <Button onClick={() => setCancel(record)}>Cancel</Button>
+                  <Button
+                    onClick={() => {
+                      setCancel(record);
+                      setCancellationReason("");
+                      setCancelError("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
                 ) : (
                   record.declineReason ||
                   (record.status === "Completed" ? (
@@ -1081,7 +1097,8 @@ export function OwnerAppointments() {
                       Medical records
                     </Link>
                   ) : (
-                    "Cancelled by owner."
+                    record.cancellationReason ||
+                    "Cancellation reason not recorded for this older booking."
                   ))
                 ),
             },
@@ -1100,17 +1117,58 @@ export function OwnerAppointments() {
           {cancel?.pet?.name} · {formatDate(cancel?.date)} ·{" "}
           {formatTime(cancel?.time)}
         </p>
-        <p>This will release the booked slot.</p>
+        <Field
+          label="Cancellation reason"
+          name="cancellationReason"
+          required
+          errors={{ cancellationReason: cancelError }}
+        >
+          <Input.TextArea
+            id="cancellationReason"
+            value={cancellationReason}
+            minLength={5}
+            maxLength={500}
+            rows={3}
+            placeholder="Explain why you need to cancel this appointment."
+            onChange={({ target: { value } }) => {
+              setCancellationReason(value);
+              setCancelError("");
+            }}
+          />
+        </Field>
+        <p>
+          This will release the booked slot. The clinic will receive your
+          reason.
+        </p>
       </Modal>
     </>
   );
 }
 export function Notifications({ admin = false }) {
-  const resource = useResource("/notifications");
+  const [scope, setScope] = useState("inbox");
+  const inbox = admin && scope === "inbox";
+  const resource = useResource(
+    inbox ? "/notifications?scope=inbox" : "/notifications",
+  );
   return (
     <>
-      <PageHeading title={admin ? "Notification Log" : "Notifications"} />
-      <NotificationFeed resource={resource} admin={admin} />
+      <PageHeading title={admin ? "Clinic notifications" : "Notifications"} />
+      {admin && (
+        <Tabs
+          activeKey={scope}
+          onChange={setScope}
+          items={[
+            { key: "inbox", label: "Clinic inbox" },
+            { key: "sent", label: "Owner notification log" },
+          ]}
+        />
+      )}
+      <NotificationFeed
+        key={scope}
+        resource={resource}
+        admin={admin}
+        inbox={inbox}
+      />
     </>
   );
 }

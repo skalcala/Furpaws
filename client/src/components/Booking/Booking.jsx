@@ -1,15 +1,8 @@
+import NumericInput from "../Shared/NumericInput";
+import PictureUpload from "../Shared/PictureUpload";
+import PetRegistrationFields from "../Shared/PetRegistrationFields";
 import { useEffect, useState } from "react";
-import {
-  Alert,
-  App,
-  Button,
-  Form,
-  Input,
-  InputNumber,
-  Modal,
-  Select,
-  Steps,
-} from "antd";
+import { Alert, App, Button, Form, Input, Modal, Select, Steps } from "antd";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   api,
@@ -18,6 +11,8 @@ import {
   formatDate,
   formatTime,
   shortId,
+  isFollowUpService,
+  serviceLabel,
 } from "../../api";
 import { Details, Field, Note, Panel, Status, useResource } from "../Shared/UI";
 import { PageHeading, PetCards } from "../Owner/OwnerPages";
@@ -27,6 +22,7 @@ const blank = {
   registration: {
     name: "",
     species: "Dog",
+    otherSpecies: "",
     breed: "",
     birthDate: "",
     weight: null,
@@ -43,7 +39,13 @@ export function SchedulePicker({
   errors = {},
   showService = true,
   collectVisitDetails = false,
+  excludeId,
+  allowFollowUp = true,
 }) {
+  const { modal } = App.useApp();
+  const rescheduleQuery = excludeId
+    ? `&excludeId=${encodeURIComponent(excludeId)}`
+    : "";
   const services = useResource("/services");
   const selectedService = services.data.find(
     ({ _id }) => _id === value.service,
@@ -72,7 +74,7 @@ export function SchedulePicker({
     Promise.all(
       dates.map((date) =>
         api
-          .get(`/appointments/slots?date=${date}`)
+          .get(`/appointments/slots?date=${date}${rescheduleQuery}`)
           .then(({ data }) => [date, data.slots]),
       ),
     )
@@ -84,18 +86,18 @@ export function SchedulePicker({
     return () => {
       active = false;
     };
-  }, [year, index, days]);
+  }, [year, index, days, rescheduleQuery]);
   useEffect(() => {
     if (!value.date) return;
     let active = true;
     api
-      .get(`/appointments/slots?date=${value.date}`)
+      .get(`/appointments/slots?date=${value.date}${rescheduleQuery}`)
       .then(({ data }) => active && setSlots(data.slots))
       .catch((failure) => active && setError(errorMessage(failure)));
     return () => {
       active = false;
     };
-  }, [value.date]);
+  }, [value.date, rescheduleQuery]);
   const chooseDate = (date) => onChange({ ...value, date, time: "" });
   return (
     <>
@@ -139,16 +141,29 @@ export function SchedulePicker({
                     ? "Available"
                     : values.some(({ status }) => status === "Full")
                       ? "Full"
-                      : values.length
-                        ? "Blocked"
-                        : "Loading";
+                      : values.length &&
+                          values.every(({ status }) => status === "Past")
+                        ? "Past"
+                        : values.length
+                          ? "Blocked"
+                          : "Loading";
               return (
                 <button
                   key={date}
                   type="button"
                   className={`calendar-day ${date === value.date ? "selected" : ""} ${state.toLowerCase()}`}
-                  disabled={state !== "Available" || loading}
-                  onClick={() => chooseDate(date)}
+                  disabled={
+                    ["Blocked", "Past", "Loading"].includes(state) || loading
+                  }
+                  onClick={() =>
+                    state === "Full"
+                      ? modal.info({
+                          title: "Slot Is Full",
+                          content:
+                            "All slots on this date are full. Choose another date.",
+                        })
+                      : chooseDate(date)
+                  }
                 >
                   <strong>{i + 1}</strong>
                   <small>{date === value.date ? "Selected" : state}</small>
@@ -185,7 +200,8 @@ export function SchedulePicker({
                 }
                 options={services.data.map(({ _id, name }) => ({
                   value: _id,
-                  label: name,
+                  label: serviceLabel({ _id, name }),
+                  disabled: !allowFollowUp && isFollowUpService({ name }),
                 }))}
               />
             </Field>
@@ -194,17 +210,17 @@ export function SchedulePicker({
             <Field
               label={
                 isFollowUp
-                  ? "Follow-up details and current symptoms"
+                  ? "Follow-up notes (optional)"
                   : "Symptoms and reason for consultation"
               }
               name="reasonForVisit"
               errors={errors}
-              required
+              required={!isFollowUp}
             >
               <Input.TextArea
                 id="reasonForVisit"
                 rows={5}
-                minLength={20}
+                minLength={isFollowUp ? undefined : 20}
                 maxLength={2000}
                 value={value.reasonForVisit || ""}
                 status={errors.reasonForVisit ? "error" : undefined}
@@ -213,7 +229,7 @@ export function SchedulePicker({
                 }
                 placeholder={
                   isFollowUp
-                    ? "Describe the previous visit or treatment, your pet’s progress, any current symptoms, and what you want checked during this follow-up."
+                    ? "Optional: share an update or anything you would like the clinic to check."
                     : "Describe your pet’s symptoms, when they started, changes in appetite or behavior, and any medicine already given. For a routine checkup, explain what you want the clinic to check."
                 }
               />
@@ -222,10 +238,11 @@ export function SchedulePicker({
               </small>
               <small className="muted">
                 {isFollowUp
-                  ? "Include the previous visit or treatment and any improvement or worsening."
+                  ? "These notes are optional for a follow-up checkup."
                   : "Include when the symptoms started, how often they happen, and any changes you have noticed."}{" "}
-                Use 20–2,000 characters. The clinic will read this before the
-                visit.
+                {isFollowUp
+                  ? "Use up to 2,000 characters if you have an update."
+                  : "Use 20–2,000 characters. The clinic will read this before the visit."}
               </small>
             </Field>
           )}
@@ -237,9 +254,17 @@ export function SchedulePicker({
             {slots.map(({ time, status }) => (
               <Button
                 key={time}
-                disabled={status !== "Available"}
+                disabled={["Blocked", "Past"].includes(status)}
                 type={value.time === time ? "primary" : "default"}
-                onClick={() => onChange({ ...value, time })}
+                onClick={() =>
+                  status === "Full"
+                    ? modal.info({
+                        title: "Slot Is Full",
+                        content:
+                          "This slot is full. Choose another available time.",
+                      })
+                    : onChange({ ...value, time })
+                }
               >
                 {formatTime(time)}
                 {status !== "Available" ? ` · ${status}` : ""}
@@ -248,7 +273,7 @@ export function SchedulePicker({
           </div>
           {errors.time && <small className="error-text">{errors.time}</small>}
           <p className="muted">
-            Full dates and times are disabled. Blocked and past dates cannot be
+            Full slots show a warning. Blocked and past slots cannot be
             selected.
           </p>
         </Panel>
@@ -285,7 +310,6 @@ export default function Booking() {
   const { pathname } = useLocation();
   const step = pathname.split("/").at(-1);
   const [form] = Form.useForm();
-  const { message } = App.useApp();
   useEffect(() => {
     sessionStorage.setItem("furpawsDraft", JSON.stringify(draft));
   }, [draft]);
@@ -303,7 +327,11 @@ export default function Booking() {
     setDraft(nextDraft);
     const length = (nextDraft.reasonForVisit || "").trim().length;
     if (
-      (length >= 20 && length <= 2000) ||
+      ((isFollowUpService(
+        services.data.find((s) => s._id === nextDraft.service),
+      ) ||
+        length >= 20) &&
+        length <= 2000) ||
       services.data.find(({ _id }) => _id === nextDraft.service)?.type !==
         "Consultation"
     ) {
@@ -329,6 +357,7 @@ export default function Booking() {
         ...(!draft.time ? { time: "Choose an available time." } : {}),
         ...(!draft.service ? { service: "Choose a medical service." } : {}),
         ...(service?.type === "Consultation" &&
+        !isFollowUpService(service) &&
         ((draft.reasonForVisit || "").trim().length < 20 ||
           (draft.reasonForVisit || "").trim().length > 2000)
           ? {
@@ -345,6 +374,7 @@ export default function Booking() {
     if (busy) return;
     if (
       service?.type === "Consultation" &&
+      !isFollowUpService(service) &&
       ((draft.reasonForVisit || "").trim().length < 20 ||
         (draft.reasonForVisit || "").trim().length > 2000)
     ) {
@@ -368,6 +398,7 @@ export default function Booking() {
       sessionStorage.setItem("furpawsConfirmation", JSON.stringify(saved));
       sessionStorage.removeItem("furpawsDraft");
       setDraft(blank);
+      window.localStorage.setItem("furpaws:refresh", String(Date.now()));
       go("U8");
     } catch (failure) {
       setError(errorMessage(failure));
@@ -380,24 +411,6 @@ export default function Booking() {
     } finally {
       setBusy(false);
     }
-  };
-  const upload = ({ target }) => {
-    const file = target.files[0];
-    if (!file) return;
-    if (
-      file.size > 2000000 ||
-      !["image/png", "image/jpeg", "image/webp"].includes(file.type)
-    ) {
-      message.error("Use a JPG, PNG, or WebP image up to 2 MB.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () =>
-      setDraft((current) => ({
-        ...current,
-        registration: { ...current.registration, picture: reader.result },
-      }));
-    reader.readAsDataURL(file);
   };
   const titles = {
     U4: "Book Appointment · Step 1",
@@ -427,7 +440,16 @@ export default function Booking() {
                 <button
                   key={bookingType}
                   className={`choice ${draft.bookingType === bookingType ? "selected" : ""}`}
-                  onClick={() => setDraft({ ...draft, bookingType })}
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      bookingType,
+                      ...(bookingType === "No record" &&
+                      isFollowUpService(service)
+                        ? { service: "", reasonForVisit: "" }
+                        : {}),
+                    })
+                  }
                 >
                   <h2>{bookingType}</h2>
                   <p>
@@ -471,12 +493,16 @@ export default function Booking() {
           <p>Booking type: No record</p>
           <Form
             form={form}
-            onValuesChange={(_, values) =>
+            onValuesChange={(changed, values) => {
+              const reset = changed.species
+                ? { breed: undefined, otherSpecies: "" }
+                : {};
+              if (changed.species) form.setFieldsValue(reset);
               setDraft((current) => ({
                 ...current,
-                registration: { ...current.registration, ...values },
-              }))
-            }
+                registration: { ...current.registration, ...values, ...reset },
+              }));
+            }}
             layout="vertical"
             onFinish={(values) => {
               setDraft({
@@ -494,25 +520,7 @@ export default function Booking() {
               >
                 <Input />
               </Form.Item>
-              <Form.Item
-                label="Species"
-                name="species"
-                rules={[{ required: true }]}
-              >
-                <Select
-                  options={["Dog", "Cat", "Other"].map((value) => ({
-                    value,
-                    label: value,
-                  }))}
-                />
-              </Form.Item>
-              <Form.Item
-                label="Breed"
-                name="breed"
-                rules={[{ required: true, max: 80 }]}
-              >
-                <Input />
-              </Form.Item>
+              <PetRegistrationFields form={form} />
               <Form.Item
                 label="Date of birth"
                 name="birthDate"
@@ -531,26 +539,29 @@ export default function Booking() {
                 <Input type="date" max={dayKey()} />
               </Form.Item>
               <Form.Item
-                label="Weight (kg)"
+                label="Estimated weight (kg, optional)"
                 name="weight"
-                rules={[
-                  { required: true, type: "number", min: 0.01, max: 500 },
-                ]}
+                extra="Estimate only. The clinic will measure the actual weight during the visit."
+                rules={[{ type: "number", min: 0.01, max: 500 }]}
               >
-                <InputNumber min={0.01} max={500} step={0.1} />
-              </Form.Item>
-              <div className="field">
-                <label htmlFor="picture">Picture upload (up to 2 MB)</label>
-                <input
-                  id="picture"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={upload}
+                <NumericInput
+                  min={0.01}
+                  max={500}
+                  step={0.1}
+                  placeholder="Leave blank if unsure"
                 />
-                {draft.registration.picture && <small>Picture selected</small>}
-              </div>
+              </Form.Item>
+              <PictureUpload
+                value={draft.registration.picture}
+                onChange={(picture) =>
+                  setDraft((current) => ({
+                    ...current,
+                    registration: { ...current.registration, picture },
+                  }))
+                }
+              />
             </div>
-            <div className="row">
+            <div className="row booking-actions">
               <Button onClick={() => go("U4")}>Back</Button>
               <Button htmlType="submit" type="primary">
                 Continue
@@ -570,9 +581,10 @@ export default function Booking() {
             onChange={updateSchedule}
             errors={errors}
             collectVisitDetails
+            allowFollowUp={draft.bookingType === "With record"}
           />
           {errors.date && <p className="error-text">{errors.date}</p>}
-          <div className="row">
+          <div className="row booking-actions">
             <Button
               onClick={() =>
                 go(draft.bookingType === "No record" ? "U5" : "U4")
@@ -609,7 +621,7 @@ export default function Booking() {
                 ? "Your new pet will remain Pending until clinic approval."
                 : "Please check the pet and schedule before submitting."}
             </Note>
-            <div className="row">
+            <div className="row booking-actions">
               <Button disabled={busy} onClick={() => go("U6")}>
                 Back
               </Button>
@@ -653,7 +665,7 @@ export default function Booking() {
                 ["Time", formatTime(confirmation.time)],
               ]}
             />
-            <div className="row">
+            <div className="row booking-actions">
               <Link className="button primary" to="/owner/U9">
                 View My Appointments
               </Link>

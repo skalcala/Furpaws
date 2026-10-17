@@ -34,6 +34,15 @@ const audit = async (user, action, resource, record, before, after, session) =>
     ],
     { session },
   );
+const notifyAdmins = async (data, session) => {
+  const admins = await require("../models").User.find({ role: "ADMIN" }).session(session);
+  for (const admin of admins) await notify({ ...data, owner: admin._id, audience: "ADMIN" }, session);
+};
+const assertFields = (body, keys) => {
+  if (!body || typeof body !== "object" || Array.isArray(body)) fail(400, "Send a valid JSON object.");
+  const unknown = Object.keys(body || {}).filter(key => !keys.includes(key));
+  if (unknown.length) fail(400, "Remove unsupported fields from this request.", Object.fromEntries(unknown.map(key => [key, "This field is not accepted."])));
+};
 const notify = async (data, session) =>
   Notification.create([data], { session });
 const transaction = async (work) => {
@@ -54,4 +63,4 @@ const getDoc = async (Model, id, session) => {
   if (!doc) fail(404, "Record not found.");
   return doc;
 };
-module.exports = { fail, pick, today, audit, notify, transaction, getDoc };
+module.exports = { fail, pick, today, audit, notify, transaction, getDoc, notifyAdmins, assertFields };

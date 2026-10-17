@@ -8,6 +8,8 @@ import {
   errorMessage,
   formatDate,
   formatTime,
+  formatPetWeight,
+  formatSpecies,
   shortId,
 } from "../../api";
 import {
@@ -24,6 +26,10 @@ import { PageHeading } from "../Owner/OwnerPages";
 import { SchedulePicker } from "../Booking/Booking";
 export default function AdminAppointments({ mode = "appointments" }) {
   const resource = useResource("/appointments");
+  const schedules = useResource("/schedules");
+  const [queueDate, setQueueDate] = useState(dayKey());
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancelErrors, setCancelErrors] = useState({});
   const [status, setStatus] = useState("Approved");
   const [view, setView] = useState("Table");
   const [selected, setSelected] = useState(null);
@@ -45,7 +51,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
     approval
       ? value === "Pending"
       : queue
-        ? value === "Approved" && date === dayKey()
+        ? value === "Approved" && date === queueDate
         : value === status,
   );
   const decision = async (value) => {
@@ -78,25 +84,31 @@ export default function AdminAppointments({ mode = "appointments" }) {
       setError("Choose an available date and time.");
       return;
     }
+    setError("");
+    setErrors({});
     setBusy(true);
     try {
       await api.patch(`/appointments/${reschedule._id}`, {
         date: slot.date,
         time: slot.time,
+        service: slot.service,
+        reasonForVisit: slot.reasonForVisit,
       });
       setReschedule(null);
       await resource.refresh();
       message.success("Appointment rescheduled.");
     } catch (failure) {
       setError(errorMessage(failure));
+      setErrors(failure.response?.data?.errors || {});
     } finally {
       setBusy(false);
     }
   };
   const cancelBooking = async () => {
+    if (cancellationReason.trim().length < 5) { setCancelErrors({ cancellationReason: "Enter a reason using 5–500 characters." }); return; }
     setBusy(true);
     try {
-      await api.patch(`/appointments/${cancel._id}`, { status: "Cancelled" });
+      await api.patch(`/appointments/${cancel._id}`, { status: "Cancelled", cancellationReason: cancellationReason.trim() });
       setCancel(null);
       await resource.refresh();
       message.success("Appointment cancelled.");
@@ -109,24 +121,24 @@ export default function AdminAppointments({ mode = "appointments" }) {
   const columns = [
     ...(queue
       ? [
-          {
-            title: "Queue number",
-            render: (_, { time }, index) =>
-              `${String(index + 1).padStart(3, "0")} · ${formatTime(time)}`,
-          },
-        ]
+        {
+          title: "Queue number",
+          render: (_, { time }, index) =>
+            `${String(index + 1).padStart(3, "0")} · ${formatTime(time)}`,
+        },
+      ]
       : []),
     { title: "Pet", render: (_, { pet }) => pet?.name },
     { title: "Owner", render: (_, { owner }) => owner?.name },
     { title: "Service", render: (_, { service }) => service?.name },
     ...(!queue
       ? [
-          {
-            title: "Date and time",
-            render: (_, { date, time }) =>
-              `${formatDate(date)} · ${formatTime(time)}`,
-          },
-        ]
+        {
+          title: "Date and time",
+          render: (_, { date, time }) =>
+            `${formatDate(date)} · ${formatTime(time)}`,
+        },
+      ]
       : []),
     {
       title: approval ? "Booking type" : "Status",
@@ -150,7 +162,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
         ) : queue ? (
           <Link
             className="button primary"
-            to={`/admin/${record.service?.type === "Vaccination" ? "A5a" : "A5"}/${record._id}`}
+            to={`/admin/${record.service?.type === "Vaccination" ? "A5a" : "A5"}/${record._id}?from=queue`}
           >
             Start Consultation
           </Link>
@@ -161,18 +173,19 @@ export default function AdminAppointments({ mode = "appointments" }) {
                 setReschedule(record);
                 setSlot({
                   date: record.date,
-                  time: "",
+                  time: record.time,
                   service: record.service?._id,
+                  reasonForVisit: record.reasonForVisit || "",
                 });
                 setError("");
               }}
             >
               Reschedule
             </Button>
-            <Button onClick={() => setCancel(record)}>Cancel</Button>
+            <Button onClick={() => { setCancel(record); setCancellationReason(""); setCancelErrors({}); }}>Cancel</Button>
           </div>
         ) : (
-          record.declineReason || "—"
+          record.cancellationReason || record.declineReason || "—"
         ),
     },
   ];
@@ -201,10 +214,10 @@ export default function AdminAppointments({ mode = "appointments" }) {
           <Details
             entries={[
               ["Pet name", current.pet?.name],
-              ["Species", current.pet?.species],
+              ["Species", current.pet ? formatSpecies(current.pet) : "—"],
               ["Breed", current.pet?.breed],
               ["Date of birth", formatDate(current.pet?.birthDate)],
-              ["Weight", `${current.pet?.weight} kg`],
+              ["Current / estimated weight", current.pet ? formatPetWeight(current.pet) : "—"],
             ]}
           />
           {current.pet?.picture && (
@@ -256,6 +269,8 @@ export default function AdminAppointments({ mode = "appointments" }) {
               ? "Today’s Queue"
               : "Appointments · Table & Calendar"
         }
+        backTo={id ? "/admin/A2" : undefined}
+        backLabel="Back to Approvals"
       />
       {!approval && !queue && (
         <div className="row spread">
@@ -289,10 +304,20 @@ export default function AdminAppointments({ mode = "appointments" }) {
         ) : (
           <>
             {queue && (
-              <div className="row">
-                <h2>{formatDate(dayKey())}</h2>
-                <Status value="Approved" />
-              </div>
+              <Panel title={queueDate === dayKey() ? "Today’s approved queue" : "Selected-date queue · Preview"}>
+                <div className="row spread">
+                  <label>Queue date <Input aria-label="Queue date" type="date" value={queueDate} onChange={({ target: { value } }) => value && setQueueDate(value)} /></label>
+                  <Button onClick={() => setQueueDate(dayKey())}>Today</Button>
+                  <Link className="button" to="/admin/A10">Schedule Settings</Link>
+                </div>
+                {(() => {
+                  const schedule = schedules.data[0];
+                  const hours = schedule?.hours.find(({ day }) => day === new Date(`${queueDate}T12:00:00+08:00`).getUTCDay());
+                  const closed = schedule && ([...schedule.blockedDates, ...schedule.holidays, ...schedule.leaveDates].includes(queueDate) || hours?.closed);
+                  return <Note>{closed ? "This date is closed or blocked in Schedule Settings. Existing approved bookings remain visible. For a real visit, an Admin must update the schedule; booking rules are never bypassed." : "Only Approved bookings for the selected date appear here. For testing, preview a date with an approved booking, or use the isolated test workflow described in the project guide."}</Note>;
+                })()}
+                {!rows.length && <p>No approved appointments for {formatDate(queueDate)}. Review Approvals or select another queue date.</p>}
+              </Panel>
             )}
             {view === "Calendar" && !approval && !queue ? (
               <Panel title="Appointment calendar">
@@ -309,7 +334,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
                 />
               </Panel>
             ) : (
-              <DataTable data={rows} columns={columns} />
+              <DataTable key={status} data={rows} columns={columns} />
             )}
           </>
         )}
@@ -319,14 +344,14 @@ export default function AdminAppointments({ mode = "appointments" }) {
           ? "Only Admin may approve or decline a booking. New pets remain Pending and hidden until approved or after a completed checkup."
           : queue
             ? "Auto-populated from today’s Approved appointments only. Start Consultation opens the linked approved appointment. Save and Complete marks the visit done."
-            : "All appointments originate from the owner dashboard. No manual or walk-in appointment creation."}
+            : "Scheduled appointments come from owners. Admins can record urgent visits through Emergency consultation."}
       </Note>
       <Modal
         open={!!selected}
         width={800}
         title={`Approval Detail · ${current?.bookingType}`}
         onCancel={() => setSelected(null)}
-        footer={null}
+        footer={<Button onClick={() => setSelected(null)}>Back to Approvals</Button>}
       >
         {detail}
       </Modal>
@@ -373,7 +398,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
         confirmLoading={busy}
         okText="Save schedule"
       >
-        <SchedulePicker value={slot} onChange={setSlot} />
+        <SchedulePicker value={slot} onChange={setSlot} errors={errors} collectVisitDetails allowFollowUp={reschedule?.bookingType==="With record"} excludeId={reschedule?._id} />
         {error && <Alert type="error" message={error} />}
       </Modal>
       <Modal
@@ -386,6 +411,10 @@ export default function AdminAppointments({ mode = "appointments" }) {
         <p>
           {cancel?.pet?.name} · {formatDate(cancel?.date)}
         </p>
+        <Field label="Cancellation reason" name="adminCancellationReason" required errors={{ adminCancellationReason: cancelErrors.cancellationReason }}>
+          <Input.TextArea id="adminCancellationReason" value={cancellationReason} minLength={5} maxLength={500} rows={3} placeholder="Explain why the clinic is cancelling this appointment." onChange={({ target: { value } }) => { setCancellationReason(value); setCancelErrors({}); }} />
+        </Field>
+        <p>The owner will receive this reason in their notification.</p>
       </Modal>
     </>
   );

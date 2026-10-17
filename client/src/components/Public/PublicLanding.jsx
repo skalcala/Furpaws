@@ -35,7 +35,7 @@ const services = [
   },
   {
     Icon: MedicineBoxOutlined,
-    title: "Prescription guidance",
+    title: "Care instructions",
     text: "Revisit the treatment instructions from your veterinarian.",
   },
   {

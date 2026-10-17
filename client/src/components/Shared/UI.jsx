@@ -56,26 +56,31 @@ export function DataTable({
   columns,
   data,
   loading,
+  paginate = true,
   empty = "No records found.",
 }) {
   return (
     <Table
       columns={columns}
-      dataSource={data}
+      dataSource={data.map((record, index) => ({
+        ...record,
+        key:
+          record._id ||
+          record.key ||
+          `${record.createdAt || record.date || "record"}-${index}`,
+      }))}
       loading={loading}
-      rowKey={(record) =>
-        record._id || record.key || record.time || record.status
-      }
-      pagination={{
+      rowKey="key"
+      pagination={paginate ? {
         defaultPageSize: 10,
-        hideOnSinglePage: true,
+        hideOnSinglePage: false,
         showSizeChanger: false,
         showLessItems: false,
         responsive: true,
         position: ["bottomRight"],
         showTotal: (total, [start, end]) =>
           `${start}–${end} of ${total} records`,
-      }}
+      } : false}
       scroll={{ x: "max-content" }}
       locale={{
         emptyText: (

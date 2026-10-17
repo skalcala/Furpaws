@@ -4,6 +4,7 @@ const { ref, text } = require("./schemaFields");
 const NotificationSchema = new mongoose.Schema(
   {
     owner: ref("User"),
+    audience: { type: String, enum: ["OWNER", "ADMIN"], default: "OWNER" },
     pet: ref("Pet", false),
     appointment: ref("Appointment", false),
     title: text(true),

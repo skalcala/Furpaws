@@ -12,7 +12,7 @@ const auth = async (req, res, next) => {
       fail(401, "Your session expired. Please sign in again.");
     }
     req.user = await User.findById(payload.id);
-    if (!req.user) fail(401, "Account not found. Please sign in again.");
+    if (!req.user || req.user.accountType === "guest") fail(401, "Account not found. Please sign in again.");
     next();
   } catch (error) {
     next(error);

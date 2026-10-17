@@ -49,7 +49,7 @@ export const adminNavigation = [
   ["A4", "Today’s Queue"],
   ["A6", "Pets & Owners"],
   ["A5", "Consultations"],
-  ["A5?tab=prescriptions", "Prescriptions"],
+  ["A5?tab=followups", "Follow-up Checkups"],
   ["A8", "Medicine Inventory"],
   ["A7", "Vaccinations"],
   ["A9", "Services"],
@@ -73,7 +73,7 @@ const navigationIcons = {
   A4: ClockCircleOutlined,
   A6: TeamOutlined,
   A5: SolutionOutlined,
-  "A5?tab=prescriptions": FileTextOutlined,
+  "A5?tab=followups": FileTextOutlined,
   A8: MedicineBoxOutlined,
   A7: ExperimentOutlined,
   A9: AppstoreOutlined,
@@ -106,22 +106,22 @@ export default function Layout() {
   const [query, setQuery] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const notifications = useResource("/notifications");
+  const notifications = useResource(isAdmin ? "/notifications?scope=inbox" : "/notifications");
   const { refresh: refreshNotifications } = notifications;
   useEffect(() => {
     const refresh = () => refreshNotifications();
     window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
     window.addEventListener("furpaws:notifications", refresh);
-    const interval = window.setInterval(refresh, 60000);
+    const interval = window.setInterval(refresh, 10000);
     return () => {
       window.removeEventListener("focus", refresh);
+      window.removeEventListener("storage", refresh);
       window.removeEventListener("furpaws:notifications", refresh);
       window.clearInterval(interval);
     };
   }, [refreshNotifications]);
-  const notificationCount = isAdmin
-    ? notifications.data.length
-    : notifications.data.filter(({ read }) => !read).length;
+  const notificationCount = notifications.data.filter(({ read }) => !read).length;
 
   const navigation = isAdmin ? adminNavigation : ownerNavigation;
   const screen = pathname.split("/")[2];
@@ -142,10 +142,10 @@ export default function Layout() {
         {navigation.map(([id, label]) => {
           const Icon = navigationIcons[id];
           const active =
-            id === "A5?tab=prescriptions"
-              ? search.includes("tab=prescriptions") && parentScreen === "A5"
+            id === "A5?tab=followups"
+              ? search.includes("tab=followups") && parentScreen === "A5"
               : id === parentScreen &&
-                !(id === "A5" && search.includes("tab=prescriptions"));
+                !(id === "A5" && search.includes("tab=followups"));
           const groupStart =
             isAdmin && ["A6", "A9", "A15", "settings"].includes(id);
           return (
@@ -176,13 +176,15 @@ export default function Layout() {
         >
           ☰
         </Button>
-        <Link to={`${root}${isAdmin ? "A1" : "U1"}`}>
+        <Link className="app-brand" to={`${root}${isAdmin ? "A1" : "U1"}`}>
           <Logo />
+          {!isAdmin && <span className="owner-brand-caption">Veterinary Clinic</span>}
         </Link>
         {isAdmin ? (
           <Input.Search
             className="global-search"
-            placeholder="Global search"
+            placeholder="Search pets, owners, email or phone"
+            aria-label="Search pets and owners"
             value={query}
             onChange={({ target: { value } }) => setQuery(value)}
             onSearch={() =>
@@ -190,9 +192,7 @@ export default function Layout() {
             }
           />
         ) : (
-          <span className="header-description">
-            Veterinary Clinic Management System
-          </span>
+          <div className="owner-portal-navigation">{nav}</div>
         )}
         <Popover
           placement="bottomRight"
@@ -220,6 +220,7 @@ export default function Layout() {
                 resource={notifications}
                 admin={isAdmin}
                 compact
+                inbox={isAdmin}
               />
               <Link
                 className="notification-view-all"
@@ -289,17 +290,6 @@ export default function Layout() {
           </button>
         </Dropdown>
       </header>
-      {!isAdmin && (
-        <div className="owner-portal-navigation">
-          <span className="owner-portal-label">
-            <HeartOutlined aria-hidden="true" /> My pet care
-          </span>
-          {nav}
-          <span className="portal-private">
-            <UserOutlined aria-hidden="true" /> Personal pet portal
-          </span>
-        </div>
-      )}
       <div className="workspace">
         {isAdmin && <aside>{nav}</aside>}
         <main className="page-content">

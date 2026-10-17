@@ -4,7 +4,8 @@ import { BellOutlined, CheckOutlined, SearchOutlined } from "@ant-design/icons";
 import { api, errorMessage, formatDate } from "../../api";
 import { RequestState } from "./UI";
 
-export function NotificationFeed({ resource, admin = false, compact = false }) {
+export function NotificationFeed({ resource, admin = false, compact = false, inbox = false }) {
+  const personal = !admin || inbox;
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [page, setPage] = useState(1);
@@ -14,7 +15,7 @@ export function NotificationFeed({ resource, admin = false, compact = false }) {
   const unread = resource.data.filter(({ read }) => !read).length;
   const rows = resource.data.filter(
     ({ title, message: body, owner, read }) =>
-      (admin || filter === "All" || !read) &&
+      (!personal || filter === "All" || !read) &&
       `${title} ${body} ${owner?.name || ""}`
         .toLowerCase()
         .includes(query.toLowerCase()),
@@ -47,11 +48,13 @@ export function NotificationFeed({ resource, admin = false, compact = false }) {
             <BellOutlined aria-hidden="true" />
           </span>
           <div>
-            <h2>{admin ? "Clinic notification log" : "Your care updates"}</h2>
+            <h2>{inbox ? "Your clinic inbox" : admin ? "Clinic notification log" : "Your care updates"}</h2>
             <p>
-              {admin
-                ? `${resource.data.length} messages sent to pet owners`
-                : `${unread} unread · Booking decisions, visit updates, and reminders`}
+              {inbox
+                ? `${unread} unread · New appointment requests and Owner cancellations`
+                : admin
+                  ? `${resource.data.length} messages sent to pet owners`
+                  : `${unread} unread · Booking decisions, visit updates, and reminders`}
             </p>
           </div>
         </div>
@@ -68,7 +71,7 @@ export function NotificationFeed({ resource, admin = false, compact = false }) {
           }}
           allowClear
         />
-        {!admin && (
+        {personal && (
           <Segmented
             aria-label="Filter notifications"
             options={["All", "Unread"]}
@@ -85,12 +88,12 @@ export function NotificationFeed({ resource, admin = false, compact = false }) {
           {visible.map(
             ({ _id, title, message: body, owner, createdAt, read }) => (
               <article
-                className={`notification-card${!read && !admin ? " is-unread" : ""}`}
+                className={`notification-card${!read && personal ? " is-unread" : ""}`}
                 key={_id}
               >
                 <div className="notification-card-top">
                   <span className="notification-kind">
-                    {admin
+                    {!personal
                       ? owner?.name || "Pet owner"
                       : read
                         ? "Read"
@@ -100,7 +103,7 @@ export function NotificationFeed({ resource, admin = false, compact = false }) {
                 </div>
                 <h3>{title}</h3>
                 <p>{body}</p>
-                {!admin &&
+                {personal &&
                   (!read ? (
                     <Button
                       size="small"

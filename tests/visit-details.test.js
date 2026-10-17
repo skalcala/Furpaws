@@ -18,7 +18,7 @@ const request = async (
   return { status: response.status, data: await response.json() };
 };
 after(async () => mongoose.disconnect());
-test("Consultation and Follow-up require detailed owner explanations; Vaccination does not", async () => {
+test("Consultations require details; follow-up notes are optional and follow-ups require existing records", async () => {
   await mongoose.connect(process.env.MONGODB_URI);
   const {
     Appointment,
@@ -77,7 +77,7 @@ test("Consultation and Follow-up require detailed owner explanations; Vaccinatio
   };
   const createdPets = [];
   try {
-    for (const service of [consultation, followup]) {
+    for (const service of [consultation]) {
       for (const reasonForVisit of [
         undefined,
         "",
@@ -105,7 +105,7 @@ test("Consultation and Follow-up require detailed owner explanations; Vaccinatio
     );
     const reason =
       "  My pet has been sneezing for three days. Appetite is lower than usual. No medicine has been given.\nPlease check breathing and temperature.  ";
-    for (const service of [consultation, followup]) {
+    for (const service of [consultation]) {
       const result = await request("/appointments", {
         token: owner,
         body: {
@@ -129,6 +129,12 @@ test("Consultation and Follow-up require detailed owner explanations; Vaccinatio
         reason.trim(),
       );
     }
+    const rejectedFollowUp=await request("/appointments",{token:owner,body:{...body,...(await slot()),service:followup._id}});
+    assert.equal(rejectedFollowUp.status,400);
+    const existing=(await request("/pets",{token:owner})).data[0];
+    const follow=await request("/appointments",{token:owner,body:{bookingType:"With record",pet:existing._id,service:followup._id,...(await slot()),reasonForVisit:""}});
+    assert.equal(follow.status,201);assert.equal(follow.data.reasonForVisit,"");
+    await Appointment.deleteOne({_id:follow.data._id});await Notification.deleteMany({appointment:follow.data._id});
     const vaccine = await request("/appointments", {
       token: owner,
       body: { ...body, ...(await slot()), service: vaccination._id },

@@ -56,9 +56,11 @@ const slotState = async (date, time, schedule, session, excludeId, counts) => {
     ? "Full"
     : "Available";
 };
-const validateSlot = async (date, time, session, excludeId) => {
+const validateSlot = async (date, time, session, excludeId, owner) => {
   const schedule = await lockSchedule(session);
   if (!schedule) fail(500, "Clinic schedule has not been configured.");
+  if (owner && await Appointment.exists({ owner, date, status: { $in: ["Pending", "Approved"] }, ...(excludeId ? { _id: { $ne: excludeId } } : {}) }).session(session))
+    fail(409, "You already have a Pending or Approved appointment on this day. Choose another date or cancel the existing booking.", { date: "Only one active appointment per owner per day is allowed." });
   const state = await slotState(date, time, schedule, session, excludeId);
   if (state !== "Available")
     fail(
@@ -71,9 +73,10 @@ const validateSlot = async (date, time, session, excludeId) => {
 };
 // First open slot on `date`, trying `preferredTime` first. Used when the clinic
 // schedules a pet's next vaccination automatically.
-const findOpenSlot = async (date, preferredTime, session) => {
+const findOpenSlot = async (date, preferredTime, session, owner) => {
   const schedule = await lockSchedule(session);
   if (!schedule) return null;
+  if (owner && await Appointment.exists({ owner, date, status: { $in: ["Pending", "Approved"] } }).session(session)) return null;
   const candidates = [
     preferredTime,
     ...timesForDate(schedule, date).filter((time) => time !== preferredTime),
@@ -102,13 +105,14 @@ const getSlots = async (req, res) => {
   }).select("time").lean();
   const counts = { daily: bookings.length, byTime: new Map() };
   for (const { time } of bookings) counts.byTime.set(time, (counts.byTime.get(time) || 0) + 1);
+  const ownerDailyLimitReached = req.user.role === "OWNER" && !!(await Appointment.exists({ owner: req.user._id, date, status: { $in: ["Pending", "Approved"] } }));
   const slots = await Promise.all(
     timesForDate(schedule, date).map(async (time) => ({
       time,
-      status: await slotState(date, time, schedule, null, excludeId, counts),
+      status: ownerDailyLimitReached ? "Blocked" : await slotState(date, time, schedule, null, excludeId, counts),
     })),
   );
-  res.json({ date, slots, capacity: SLOT_CAPACITY, intervalMinutes: 30 });
+  res.json({ date, slots, capacity: SLOT_CAPACITY, intervalMinutes: 30, ownerDailyLimitReached });
 };
 const getAppointments = async (req, res) =>
   res.json(
@@ -145,7 +149,7 @@ const createAppointment = async (req, res) =>
       if (!["With record", "No record"].includes(bookingType))
         fail(400, "Choose a booking type.");
       const service = await getDoc(Service, serviceId, session);
-      if (!service.active) fail(400, "This service is unavailable.");
+      if (!service.active || service.type === "Emergency") fail(400, "This service is unavailable for owner booking.");
       const isFollowUp = /follow[ -]?up/i.test(service.name);
       if (isFollowUp && bookingType !== "With record")
         fail(
@@ -189,7 +193,7 @@ const createAppointment = async (req, res) =>
             registration,
           );
       }
-      await validateSlot(date, time, session);
+      await validateSlot(date, time, session, undefined, req.user._id);
       let pet;
       if (bookingType === "With record") {
         pet = await getDoc(Pet, petId, session);
@@ -320,6 +324,7 @@ const decideAppointment = async (req, res) =>
           appointment.time,
           session,
           appointment._id,
+          appointment.owner,
         );
         const pet = await getDoc(Pet, appointment.pet, session);
         if (pet.status !== "Approved") {
@@ -417,7 +422,7 @@ const updateAppointment = async (req, res) =>
           req.body.service || appointment.service,
           session,
         );
-        if (!service.active) fail(400, "Choose an active service.");
+        if (!service.active || service.type === "Emergency") fail(400, "Choose an active scheduled service.");
         const isFollowUp = /follow[ -]?up/i.test(service.name);
         if (isFollowUp && appointment.bookingType !== "With record")
           fail(400, "Follow-up checkups require an existing pet record.");
@@ -440,6 +445,7 @@ const updateAppointment = async (req, res) =>
           req.body.time,
           session,
           appointment._id,
+          appointment.owner,
         );
         if (
           await Appointment.exists({

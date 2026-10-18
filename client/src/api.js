@@ -60,3 +60,7 @@ export const formatPetWeight = ({ weight, estimatedWeight }) =>
 export const isFollowUpService = service => /follow[ -]?up/i.test(service?.name || "");
 export const serviceLabel = service => isFollowUpService(service)?"Follow-up checkup":service?.name || "";
 export const formatPetAge = pet => pet.birthDate ? `${Math.max(0,Math.floor((Date.now()-new Date(pet.birthDate))/31557600000))} years` : "Age unknown";
+
+export const formatDateTime = value => value ? new Date(value).toLocaleString("en-PH", { timeZone: "Asia/Manila", month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) : "—";
+export const appointmentId = record => record?.appointmentNumber ? String(record.appointmentNumber).padStart(3, "0") : shortId(record?._id, "APT-");
+export const appointmentServiceLabel = record => record?.source === "Emergency" ? "Emergency" : serviceLabel(record?.service);

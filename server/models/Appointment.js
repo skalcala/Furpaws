@@ -3,6 +3,7 @@ const { ref, text } = require("./schemaFields");
 
 const AppointmentSchema = new mongoose.Schema(
   {
+    appointmentNumber: { type: Number, min: 1, unique: true, sparse: true },
     owner: ref("User"),
     pet: ref("Pet"),
     service: ref("Service"),
@@ -29,6 +30,10 @@ const AppointmentSchema = new mongoose.Schema(
   },
   { timestamps: true, strict: "throw" },
 );
+AppointmentSchema.pre("validate", async function () {
+  if (this.isNew && this.appointmentNumber == null)
+    this.appointmentNumber = await require("../utils/appointmentNumbers").nextAppointmentNumber(this.$session());
+});
 const AppointmentModel = mongoose.model(
   "Appointment",
   AppointmentSchema,

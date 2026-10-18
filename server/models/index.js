@@ -1,5 +1,6 @@
 // Per-resource Mongoose models, following the teacher's models/User.js pattern.
 module.exports = {
+  Counter: require("./Counter"),
   User: require("./User"),
   OtpLimit: require("./OtpLimit"),
   Pet: require("./Pet"),

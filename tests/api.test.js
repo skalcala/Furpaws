@@ -247,6 +247,7 @@ test("Clinic flow, authorization, capacity, retired prescription rejection, and 
       { capacity: originalCapacity },
     );
   }
+  await Appointment.updateMany({ date, status: "Pending", pet: { $in: (await Pet.find({ name: new RegExp(`^${registration.name} concurrent`) })).map(p => p._id) } }, { status: "Cancelled" });
   const pending = await request("/appointments", {
     token: owner,
     body: {

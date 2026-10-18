@@ -25,6 +25,7 @@ const getConsultations = async (req, res) =>
   res.json(
     await Consultation.find()
       .select("-prescriptions")
+      .populate("appointment", "appointmentNumber source date time")
       .populate("pet")
       .populate("admin", "name")
       .sort({ createdAt: -1 }),
@@ -201,6 +202,7 @@ const completeConsultation = async (req, res) =>
           vaccination.nextDueDate,
           appointment.time,
           session,
+          appointment.owner,
         );
         if (time) {
           [nextAppointment] = await Appointment.create(
@@ -279,7 +281,7 @@ const completeConsultation = async (req, res) =>
             message: vaccination
               ? nextAppointment
                 ? `${pet.name} · ${vaccination.vaccine} booster is booked for ${nextAppointment.date} at ${nextAppointment.time}. See My Appointments to review or reschedule.`
-                : `${pet.name} · ${vaccination.vaccine} next due ${vaccination.nextDueDate}. No clinic slot was open that day, so please book an available appointment.`
+                : `${pet.name} · ${vaccination.vaccine} next due ${vaccination.nextDueDate}. The next visit was not booked automatically. Review your existing appointments or arrange another available date.`
               : followUp.enabled
                 ? `${pet.name} · Suggested checkup ${followUp.date}. ${followUp.purpose}. ${followUp.instructions} Please book an available appointment.`
                 : `${pet.name}: Follow the saved care instructions. ${prescription ? `Prescription: ${prescription}. ` : ""}${notes || ""}`,
@@ -367,16 +369,8 @@ const startEmergency = async (req, res) =>
         fail(400, "Describe the emergency (5–2,000 characters).", {
           reasonForVisit: "Enter the emergency concern.",
         });
-      const service = await Service.findOne({
-        type: "Consultation",
-        active: true,
-        name: { $not: /follow[ -]?up/i },
-      }).session(session);
-      if (!service)
-        fail(
-          409,
-          "Activate a general consultation service before starting an emergency visit.",
-        );
+      const service = await require("../utils/emergencyService").emergencyService(session);
+      if (!service.active) fail(409, "Activate the Emergency service before starting a visit.");
       let pet;
       if (req.body.pet) {
         pet = await getDoc(Pet, req.body.pet, session);

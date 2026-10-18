@@ -3,12 +3,13 @@ const { text, number } = require("./schemaFields");
 
 const ServiceSchema = new mongoose.Schema(
   {
+    key: { type: String, unique: true, sparse: true },
     name: text(true, 100),
     description: text(true, 500),
     fee: number(true),
     type: {
       type: String,
-      enum: ["Consultation", "Vaccination"],
+      enum: ["Consultation", "Vaccination", "Emergency"],
       default: "Consultation",
     },
     active: { type: Boolean, default: true },

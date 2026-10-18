@@ -1,3 +1,5 @@
+import ClinicDateTime from "../Shared/ClinicDateTime";
+import { appointmentId, appointmentServiceLabel, formatDateTime } from "../../api";
 import { screenFromPath } from "../../routes";
 import PictureUpload from "../Shared/PictureUpload";
 import PhoneVerification from "../Auth/PhoneVerification";
@@ -109,15 +111,7 @@ export function PageHeading({ title, backTo, backLabel = "Back", onBack }) {
               <ArrowLeftOutlined aria-hidden="true" /> {backLabel}
             </Link>
           ))}
-        <span className="page-date">
-          <DashboardIcon name="calendar" />
-          {new Date().toLocaleDateString("en-PH", {
-            timeZone: "Asia/Manila",
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })}
-        </span>
+        <ClinicDateTime />
       </div>
     </div>
   );
@@ -164,7 +158,7 @@ export function OwnerDashboard() {
                 <Status value={approved.status} />
               </div>
               <h3>
-                {approved.pet?.name} · {approved.service?.name}
+                {appointmentId(approved)} · {approved.pet?.name} · {appointmentServiceLabel(approved)}
               </h3>
               <p>
                 {formatDate(approved.date)} · {formatTime(approved.time)}
@@ -775,7 +769,8 @@ export function MedicalRecords({ admin = false }) {
     }
   };
   let columns = [
-    { title: "Date", dataIndex: "createdAt", render: formatDate },
+    { title: "Appointment", render: (_, record) => appointmentId(record.appointment) },
+    { title: "Created", dataIndex: "createdAt", render: formatDateTime },
     { title: "Symptoms", dataIndex: "symptoms" },
     { title: "Diagnosis", dataIndex: "diagnosis" },
     {
@@ -812,15 +807,17 @@ export function MedicalRecords({ admin = false }) {
   }
   if (tab === "Admin Notes")
     columns = [
-      { title: "Date", dataIndex: "createdAt", render: formatDate },
+      { title: "Created", dataIndex: "createdAt", render: formatDateTime },
       { title: "Admin notes", dataIndex: "notes" },
     ];
   if (tab === "Previous Appointments") {
     rows = data.appointments || [];
     columns = [
+      { title: "Appointment", render: (_, record) => appointmentId(record) },
+      { title: "Created", dataIndex: "createdAt", render: formatDateTime },
       { title: "Date", dataIndex: "date", render: formatDate },
       { title: "Time", dataIndex: "time", render: formatTime },
-      { title: "Service", render: (_, { service }) => service?.name },
+      { title: "Service", render: (_, record) => appointmentServiceLabel(record) },
       {
         title: "Status",
         dataIndex: "status",
@@ -993,6 +990,8 @@ export function OwnerAppointments() {
         <DataTable
           data={rows}
           columns={[
+            { title: "Appointment", render: (_, record) => appointmentId(record) },
+            { title: "Created", dataIndex: "createdAt", render: formatDateTime },
             { title: "Pet", render: (_, { pet }) => pet?.name },
             { title: "Service", render: (_, { service }) => service?.name },
             {

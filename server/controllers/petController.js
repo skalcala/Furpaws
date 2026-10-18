@@ -34,6 +34,7 @@ const getRecords = async (req, res) => {
   const pet = await checkPet(req.user, req.params.id);
   const [consultations, vaccinations, appointments] = await Promise.all([
     Consultation.find({ pet: pet._id }).select("-prescriptions")
+      .populate("appointment", "appointmentNumber source date time")
       .populate("admin", "name")
       .sort({ createdAt: -1 }),
     Vaccination.find({ pet: pet._id }),

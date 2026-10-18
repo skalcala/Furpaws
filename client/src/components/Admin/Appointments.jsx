@@ -1,3 +1,4 @@
+import { appointmentId, appointmentServiceLabel, formatDateTime } from "../../api";
 import VisitDetails from "../Shared/VisitDetails";
 import { useState } from "react";
 import { Alert, App, Button, Input, Modal, Tabs } from "antd";
@@ -10,7 +11,6 @@ import {
   formatTime,
   formatPetWeight,
   formatSpecies,
-  shortId,
 } from "../../api";
 import {
   DataTable,
@@ -119,18 +119,12 @@ export default function AdminAppointments({ mode = "appointments" }) {
     }
   };
   const columns = [
-    ...(queue
-      ? [
-        {
-          title: "Queue number",
-          render: (_, { time }, index) =>
-            `${String(index + 1).padStart(3, "0")} · ${formatTime(time)}`,
-        },
-      ]
-      : []),
+    { title: "Appointment", render: (_, record) => appointmentId(record) },
+    { title: "Created", dataIndex: "createdAt", render: formatDateTime },
+    ...(queue ? [{ title: "Visit time", dataIndex: "time", render: formatTime }] : []),
     { title: "Pet", render: (_, { pet }) => pet?.name },
     { title: "Owner", render: (_, { owner }) => owner?.name },
-    { title: "Service", render: (_, { service }) => service?.name },
+    { title: "Service", render: (_, record) => appointmentServiceLabel(record) },
     ...(!queue
       ? [
         {
@@ -164,7 +158,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
             className="button primary"
             to={`/admin/consultations/${record._id}?from=queue`}
           >
-            Start Consultation
+            {record.source === "Emergency" ? "Continue Emergency" : "Start Consultation"}
           </Link>
         ) : ["Approved", "Pending"].includes(record.status) ? (
           <div className="row">
@@ -197,10 +191,11 @@ export default function AdminAppointments({ mode = "appointments" }) {
       >
         <Details
           entries={[
-            ["Appointment", shortId(current._id, "APT-")],
+            ["Appointment", appointmentId(current)],
+            ["Created", formatDateTime(current.createdAt)],
             ["Owner", `${current.owner?.name} · ${current.owner?.phone}`],
             ["Booking type", current.bookingType],
-            ["Service", current.service?.name],
+            ["Service", appointmentServiceLabel(current)],
             [
               "Date and time",
               `${formatDate(current.date)} · ${formatTime(current.time)}`,

@@ -1,3 +1,4 @@
+import { appointmentId, appointmentServiceLabel } from "../../api";
 import NumericInput from "../Shared/NumericInput";
 import ClinicCalendar from "../Shared/ClinicCalendar";
 import { useEffect, useState } from "react";
@@ -211,12 +212,12 @@ export function AdminDashboard() {
               <div className="dashboard-visit-list">
                 {selectedVisits
                   .slice(0, 3)
-                  .map(({ _id, pet, owner, service, time, status }) => (
+                  .map(({ _id, pet, owner, service, time, status, source, appointmentNumber }) => (
                     <div className="dashboard-visit" key={_id}>
                       <span className="visit-time">{formatTime(time)}</span>
                       <div>
                         <strong>
-                          {pet?.name} · {service?.name}
+                          {appointmentId({ _id, appointmentNumber })} · {pet?.name} · {appointmentServiceLabel({ source, service })}
                         </strong>
                         <p>{owner?.name}</p>
                       </div>
@@ -625,7 +626,7 @@ export function ResourceManager({ resource }) {
                 />
               ) : type === "select" ? (
                 <Select
-                  options={["Consultation", "Vaccination"].map((value) => ({
+                  options={["Consultation", "Vaccination", "Emergency"].map((value) => ({
                     value,
                     label: value,
                   }))}
@@ -1037,7 +1038,7 @@ export function Billing() {
                   entries={[
                     [
                       "Appointment",
-                      `${shortId(bill.appointment?._id, "APT-")} · ${bill.appointment?.status}`,
+                      `${appointmentId(bill.appointment)} · ${bill.appointment?.status}`,
                     ],
                     ["Pet / Owner", `${bill.pet?.name} / ${bill.owner?.name}`],
                     ["Date", formatDate(bill.createdAt)],

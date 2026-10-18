@@ -1,3 +1,4 @@
+import { appointmentId, appointmentServiceLabel, formatDateTime } from "../../api";
 import PrescriptionEditor from "./PrescriptionEditor";
 import { useEffect, useState } from "react";
 import { Alert, App, Button, Input, Select } from "antd";
@@ -15,7 +16,6 @@ import {
   formatPetAge,
   formatTime,
   money,
-  shortId,
 } from "../../api";
 import {
   DataTable,
@@ -172,7 +172,9 @@ export default function Consultation() {
         <DataTable
           data={history.data}
           columns={[
-            { title: "Date", dataIndex: "createdAt", render: formatDate },
+            { title: "Appointment", render: (_, record) => appointmentId(record.appointment) },
+            { title: "Created", dataIndex: "createdAt", render: formatDateTime },
+            { title: "Visit type", render: (_, record) => record.appointment?.source === "Emergency" ? "Emergency" : "Consultation" },
             { title: "Pet", render: (_, r) => r.pet?.name },
             { title: "Symptoms", dataIndex: "symptoms" },
             { title: "Diagnosis", dataIndex: "diagnosis" },
@@ -237,10 +239,11 @@ export default function Consultation() {
           <>
             <Panel>
               <h2>
-                {shortId(id, "APT-")} · {appointment.pet?.name} ·{" "}
+                {appointmentId(appointment)} · {appointment.pet?.name} ·{" "}
                 {appointment.owner?.name} · {formatDate(appointment.date)},{" "}
                 {formatTime(appointment.time)}
               </h2>
+              <p className="muted">Created {formatDateTime(appointment.createdAt)}</p>
               <Status
                 value={
                   appointment.source === "Emergency" ? "Emergency" : "Approved"
@@ -264,7 +267,7 @@ export default function Consultation() {
                   ],
                   ["Owner", appointment.owner?.name],
                   ["Contact", appointment.owner?.phone || appointment.owner?.email],
-                  ["Service", appointment.service?.name],
+                  ["Service", appointmentServiceLabel(appointment)],
                 ]}
               />
             </Panel>
@@ -374,8 +377,8 @@ export default function Consultation() {
                     <PrescriptionEditor key={id} pet={appointment.pet} value={values.prescription} onChange={v => change("prescription", v)} errors={errors} onPendingChange={setPrescriptionPending} />
                   </Panel>
                 )}
-                <Panel title="Other notes" className="consultation-notes">
-                  <Field label="Done to the pet" name="procedure">
+                <Panel title="Treatment & home care" className="consultation-notes">
+                  <Field label="Treatment / procedure" name="procedure">
                     <Select
                       id="procedure"
                       value={values.procedure}
@@ -386,13 +389,13 @@ export default function Consultation() {
                       }))}
                     />
                   </Field>
-                  <Field label="Notes" name="notes">
+                  <Field label="Home care & follow-up instructions" name="notes">
                     <Input.TextArea
                       id="notes"
                       rows={3}
                       maxLength={2000}
                       value={values.notes}
-                      placeholder="Additional details, owner instructions and precautions. Type N/A if none."
+                      placeholder="Recovery care, monitoring and when to return. Enter N/A if no additional care instructions."
                       onChange={(e) => change("notes", e.target.value)}
                     />
                   </Field>

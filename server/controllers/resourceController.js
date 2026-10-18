@@ -77,7 +77,7 @@ const controllerFor = (resource) => {
     res.json(
       await Model.find(
         resource === "services" && req.user.role === "OWNER"
-          ? { active: true }
+          ? { active: true, type: { $ne: "Emergency" } }
           : {},
       ).sort({ createdAt: -1 }).then(records => resource === "schedules"
         ? records.map(record => ({ ...record.toObject(), capacity: SLOT_CAPACITY, times: scheduleTimes(record), intervalMinutes: 30 }))

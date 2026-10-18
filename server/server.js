@@ -63,6 +63,7 @@ const start = async () => {
     throw new Error("Set MONGODB_URI and JWT_SECRET in server/.env before starting the clinic API.");
   await mongoose.connect(process.env.MONGODB_URI);
   for (const Model of Object.values(require("./models"))) await Model.init();
+  await require("./utils/appointmentNumbers").backfillAppointmentNumbers();
   const { generateReminders } = require("./utils/reminders");
   await generateReminders();
   setInterval(() => generateReminders().catch(console.error), 60000).unref();

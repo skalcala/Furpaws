@@ -16,6 +16,7 @@ async function connectDatabase() {
       })
       .then(async () => {
         for (const Model of Object.values(require("./models"))) await Model.init();
+        await require("./utils/appointmentNumbers").backfillAppointmentNumbers();
         return mongoose.connection;
       })
       .catch((error) => {

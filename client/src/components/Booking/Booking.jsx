@@ -1,3 +1,4 @@
+import { appointmentId, formatDateTime } from "../../api";
 import { screenPath, screenFromPath } from "../../routes";
 import NumericInput from "../Shared/NumericInput";
 import PictureUpload from "../Shared/PictureUpload";
@@ -11,7 +12,6 @@ import {
   errorMessage,
   formatDate,
   formatTime,
-  shortId,
   isFollowUpService,
   serviceLabel,
 } from "../../api";
@@ -58,6 +58,7 @@ export function SchedulePicker({
   );
   const [availability, setAvailability] = useState({});
   const [slots, setSlots] = useState([]);
+  const [ownerDailyLimitReached, setOwnerDailyLimitReached] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
@@ -95,11 +96,13 @@ export function SchedulePicker({
     if (!value.date) return;
     let active = true;
     setSlots([]);
+    setOwnerDailyLimitReached(false);
     const refresh = () => api
       .get(`/appointments/slots?date=${value.date}${rescheduleQuery}`)
       .then(({ data }) => {
         if (!active) return;
         setSlots(data.slots);
+        setOwnerDailyLimitReached(!!data.ownerDailyLimitReached);
         setAvailability(current => ({ ...current, [value.date]: data.slots }));
       })
       .catch((failure) => active && setError(errorMessage(failure)));
@@ -223,7 +226,7 @@ export function SchedulePicker({
                         : "",
                   })
                 }
-                options={services.data.map(({ _id, name }) => ({
+                options={services.data.filter(service => service.type !== "Emergency").map(({ _id, name }) => ({
                   value: _id,
                   label: serviceLabel({ _id, name }),
                   disabled: !allowFollowUp && isFollowUpService({ name }),
@@ -275,6 +278,7 @@ export function SchedulePicker({
             {value.date ? formatDate(value.date) : "Choose an available date"}
           </h3>
           <p>Available time slots</p>
+          {ownerDailyLimitReached && <Alert type="info" showIcon message="You already have a Pending or Approved visit on this date. Choose another day or cancel that booking first." />}
           <div className="row wrap">
             {slots.map(({ time, status }) => (
               <Button
@@ -505,9 +509,9 @@ export default function Booking() {
               {errors.pet && <p className="error-text">{errors.pet}</p>}
             </>
           )}
-          <Button type="primary" onClick={next}>
+          <div className="row booking-actions"><Button type="primary" onClick={next}>
             Continue
-          </Button>
+          </Button></div>
           <Note>
             With record skips Pet Registration and proceeds to Schedule. No
             record continues to the Pet Registration Form.
@@ -629,7 +633,8 @@ export default function Booking() {
       )}
       {step === "U7" && (
         <>
-          <Panel title="Review your appointment">
+          <Panel title="Review your appointment" className="booking-review-card">
+            <div className="booking-review-banner"><DashboardIcon name="calendar" /><div><h3>One last look before their visit</h3><p>Check your pet, service and preferred time. The clinic will review your request.</p></div></div>
             <Details
               entries={[
                 ["Booking type", draft.bookingType],
@@ -670,12 +675,11 @@ export default function Booking() {
       {step === "U8" &&
         (confirmation ? (
           <Panel title="Appointment submitted" className="booking-confirmed">
-            <p>Your request is with the clinic.</p>
-            <Status value="Pending" />
-            <h2>Waiting for Admin approval</h2>
+            <div className="booking-confirmation-banner"><span className="booking-success-icon"><DashboardIcon name="check" /></span><div><span className="portal-kicker">Request received</span><h2>You’re one step closer to their care.</h2><p>The clinic will review your request and notify you of its decision.</p><Status value="Pending" /></div><div className="booking-reference"><span>Appointment</span><strong>{appointmentId(confirmation)}</strong></div></div>
             <Details
               entries={[
-                ["Appointment", shortId(confirmation._id, "APT-")],
+                ["Appointment", appointmentId(confirmation)],
+                ["Created", formatDateTime(confirmation.createdAt)],
                 ["Booking type", confirmation.bookingType],
                 ["Pet", confirmation.petName],
                 ["Service", confirmation.serviceName],

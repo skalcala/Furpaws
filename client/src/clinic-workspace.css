@@ -50,3 +50,23 @@
   .consultation-patient-details .details,
   .consultation-form-layout .consultation-vaccination { grid-template-columns: minmax(0, 1fr); }
 }
+/* Booking review and confirmation share the portal's care-card style. */
+.booking-review-banner, .booking-confirmation-banner { display: flex; align-items: center; gap: 20px; padding: 24px; border: 1px solid var(--colorBorder); border-radius: 18px; background: var(--colorBlush); }
+.booking-review-banner > svg, .booking-success-icon { flex: 0 0 52px; width: 52px; height: 52px; padding: 13px; border-radius: 16px; color: var(--colorPrimary); background: white; }
+.booking-success-icon svg { width: 100%; height: 100%; }
+.booking-review-banner h3, .booking-confirmation-banner h2 { margin: 0 0 8px; }
+.booking-review-banner p, .booking-confirmation-banner p { margin: 0; line-height: 1.6; color: var(--colorTextSecondary); }
+.booking-confirmation-banner .status { margin-top: 12px; }
+.booking-reference { margin-left: auto; text-align: right; color: var(--colorPrimary); }
+.booking-reference span { display: block; font-size: 12px; }
+.booking-reference strong { font-size: 32px; letter-spacing: .04em; }
+.booking-review-card .details, .booking-confirmed .details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.booking-review-card .details > div, .booking-confirmed .details > div { display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 12px; background: #faf8f9; min-width: 0; }
+.booking-review-card .details dd, .booking-confirmed .details dd { overflow-wrap: anywhere; }
+.prescription-summary { padding: 20px; border: 1px solid var(--colorBorder); border-radius: 14px; background: #faf8f9; }
+.prescription-summary p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; margin-top: 12px; }
+@media (max-width: 600px) {
+  .booking-review-banner, .booking-confirmation-banner { flex-wrap: wrap; padding: 18px; }
+  .booking-reference { margin-left: 0; text-align: left; }
+  .booking-review-card .details, .booking-confirmed .details { grid-template-columns: minmax(0, 1fr); }
+}

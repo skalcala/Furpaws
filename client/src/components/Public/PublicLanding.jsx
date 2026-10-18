@@ -169,45 +169,14 @@ export default function PublicLanding() {
                 <DashboardIcon name="pet" /> ABOUT & SERVICES
               </span>
               <h2>
-                Compassionate care.
-                <br />
-                <span>Every pet. Every visit.</span>
-              </h2>
-              <p>
-                FurPaws brings the clinic and your pet’s care journey closer
-                together. Book a visit, share what’s worrying you, and keep your
-                pets’ medical information within reach.
-              </p>
-              <div className="public-about-features">
-                {[
-                  [HeartOutlined, "Care with compassion"],
-                  [FileProtectOutlined, "Your pet’s own records"],
-                  [CalendarOutlined, "Simple online booking"],
-                  [BellOutlined, "Helpful care reminders"],
-                ].map(([Icon, text]) => (
-                  <div key={text}>
-                    <span className="public-feature-icon">
-                      <Icon aria-hidden="true" />
-                    </span>
-                    <strong>{text}</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="public-container public-services-grid">
-            <div className="public-section-copy">
-              <span className="public-eyebrow">
-                <DashboardIcon name="pet" /> OUR SERVICES
-              </span>
-              <h2>
-                The best care for
+                Compassionate care for
                 <br />
                 <span>your beloved pets.</span>
               </h2>
               <p>
-                From a routine checkup to the next chapter of their recovery,
-                keep your pet’s care connected with FurPaws.
+                From routine checkups to follow-up care, FurPaws keeps your pet’s
+                health connected. Book a visit, share your concerns, and keep
+                their medical records and care reminders within reach.
               </p>
               <div className="public-service-list">
                 {services.map(({ Icon, title, text }) => (
@@ -226,24 +195,9 @@ export default function PublicLanding() {
                 Plan your first visit <ArrowRightOutlined aria-hidden="true" />
               </a>
             </div>
-            <div className="public-care-collage">
-              <div className="public-collage-backdrop" />
-              <img
-                className="public-vet-photo"
-                src="/assets/stock/vet-magnific.jpg"
-                alt="A veterinarian examining a dog in a clinic"
-                loading="lazy"
-              />
-              <img
-                className="public-cat-photo"
-                src="/assets/stock/pets-magnific.jpg"
-                alt="A tabby cat resting next to a long-haired dog"
-                loading="lazy"
-              />
-            </div>
           </div>
         </section>
-        <section className="public-container">
+        <section className="public-container public-booking-section">
           <div className="public-booking-banner">
             <img src="/assets/stock/pets-magnific.jpg" alt="" loading="lazy" />
             <div>

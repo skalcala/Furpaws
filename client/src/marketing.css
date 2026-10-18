@@ -1022,12 +1022,19 @@
   text-underline-offset: var(--size2);
 }
 
-/* A single care story with alternating photo positions. */
-#care { scroll-margin-top: 100px; }
-#care .public-services-grid { margin-top: 64px; }
-.public-about-image, .public-care-collage { min-width: 0; }
+/* One care section, one photo, and consistent space before the booking steps. */
+#care { scroll-margin-top: 100px; padding-block: 48px; }
+#care .public-about-grid { gap: 40px; }
+#care .public-about-image { min-width: 0; height: 520px; max-height: none; }
+#care .public-service-list { margin-block: 24px; }
+.public-site .public-booking-section { margin-bottom: 48px; }
 .public-footer .public-eyebrow + p { max-width: 240px; line-height: 1.6; }
-@media (max-width: 700px) { #care .public-services-grid { margin-top: 40px; } }
+@media (max-width: 800px) {
+  #care { padding-block: 32px; }
+  #care .public-about-grid { gap: 28px; }
+  #care .public-about-image { height: 320px; }
+  .public-site .public-booking-section { margin-bottom: 32px; }
+}
 .is-compact .notification-card { padding: 0; }
 .is-compact .notification-open { padding: 14px; }
 .is-compact .notification-open p { font-size: 12px; line-height: 1.6; color: var(--colorTextSecondary); }

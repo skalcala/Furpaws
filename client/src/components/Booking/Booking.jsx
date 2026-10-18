@@ -4,7 +4,7 @@ import NumericInput from "../Shared/NumericInput";
 import PictureUpload from "../Shared/PictureUpload";
 import PetRegistrationFields from "../Shared/PetRegistrationFields";
 import { useEffect, useState } from "react";
-import { Alert, App, Button, Form, Input, Modal, Select, Steps } from "antd";
+import { Alert, Button, Form, Input, Modal, Select, Steps } from "antd";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   api,
@@ -44,7 +44,6 @@ export function SchedulePicker({
   excludeId,
   allowFollowUp = true,
 }) {
-  const { modal } = App.useApp();
   const rescheduleQuery = excludeId
     ? `&excludeId=${encodeURIComponent(excludeId)}`
     : "";
@@ -181,26 +180,18 @@ export function SchedulePicker({
                   type="button"
                   className={`calendar-day ${date === value.date ? "selected" : ""} ${state === "Loading" ? "calendar-loading" : state.toLowerCase()}`}
                   disabled={
-                    ["Blocked", "Past", "Loading", "Unavailable"].includes(state) || loading || !!error
+                    ["Full", "Blocked", "Past", "Loading", "Unavailable"].includes(state) || loading || !!error
                   }
-                  onClick={() =>
-                    state === "Full"
-                      ? modal.info({
-                          title: "Slot Is Full",
-                          content:
-                            "All slots on this date are full. Choose another date.",
-                        })
-                      : chooseDate(date)
-                  }
+                  onClick={() => chooseDate(date)}
                 >
                   <strong>{i + 1}</strong>
-                  <small>{date === value.date ? "Selected" : state}</small>
+                  <small>{date === value.date && state === "Available" ? "Selected" : state === "Full" ? "Fully booked" : state === "Blocked" ? "Closed" : state}</small>
                 </button>
               );
             })}
           </div>
           <small className="muted">
-            Available · Full · Blocked · Past · Selected
+            Available · Fully booked · Closed · Past · Selected
           </small>
         </Panel>
         <Panel title="Appointment details">
@@ -288,7 +279,7 @@ export function SchedulePicker({
                 onClick={() => onChange({ ...value, time })}
               >
                 {formatTime(time)}
-                {status !== "Available" ? ` · ${status}` : ""}
+                {status !== "Available" ? ` · ${status === "Full" ? "Fully booked" : status === "Blocked" ? "Closed" : status}` : ""}
               </Button>
             ))}
           </div>

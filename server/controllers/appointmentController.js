@@ -109,7 +109,7 @@ const getSlots = async (req, res) => {
   const slots = await Promise.all(
     timesForDate(schedule, date).map(async (time) => ({
       time,
-      status: ownerDailyLimitReached ? "Blocked" : await slotState(date, time, schedule, null, excludeId, counts),
+      status: ownerDailyLimitReached ? "Full" : await slotState(date, time, schedule, null, excludeId, counts),
     })),
   );
   res.json({ date, slots, capacity: SLOT_CAPACITY, intervalMinutes: 30, ownerDailyLimitReached });

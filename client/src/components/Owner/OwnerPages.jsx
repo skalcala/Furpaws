@@ -981,25 +981,29 @@ export function OwnerAppointments() {
     <>
       <PageHeading title="My Appointments" />
       <Tabs
+        className="compact-appointment-tabs"
         activeKey={tab}
         onChange={setTab}
         items={["Upcoming", "Previous"].map((label) => ({ key: label, label }))}
       />
       <RequestState {...resource} retry={resource.refresh}>
         <DataTable
+          compact
           data={rows}
           columns={[
-            { title: "Appointment", render: (_, record) => appointmentId(record) },
-            { title: "Created", dataIndex: "createdAt", render: formatDateTime },
-            { title: "Pet", render: (_, { pet }) => pet?.name },
-            { title: "Service", render: (_, { service }) => service?.name },
+            { title: "Appointment", width: 100, render: (_, record) => appointmentId(record) },
+            { title: "Created", width: 145, dataIndex: "createdAt", render: formatDateTime },
+            { title: "Pet", width: 90, render: (_, { pet }) => pet?.name },
+            { title: "Service", width: 140, render: (_, { service }) => service?.name },
             {
               title: "Date and time",
+              width: 145,
               render: (_, { date, time }) =>
                 `${formatDate(date)} · ${formatTime(time)}`,
             },
             {
               title: "Status",
+              width: 100,
               dataIndex: "status",
               render: (value) => <Status value={value} />,
             },
@@ -1014,6 +1018,7 @@ export function OwnerAppointments() {
             },
             {
               title: tab === "Upcoming" ? "Action" : "Details",
+              width: 110,
               render: (_, record) =>
                 ["Pending", "Approved"].includes(record.status) ? (
                   <Button

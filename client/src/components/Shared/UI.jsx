@@ -58,10 +58,14 @@ export function DataTable({
   data,
   loading,
   paginate = true,
+  compact = false,
   empty = "No records found.",
 }) {
   return (
     <Table
+      className={compact ? "compact-table" : undefined}
+      size={compact ? "small" : "large"}
+      tableLayout={compact ? "fixed" : undefined}
       columns={columns}
       dataSource={data.map((record, index) => ({
         ...record,
@@ -82,7 +86,7 @@ export function DataTable({
         showTotal: (total, [start, end]) =>
           `${start}–${end} of ${total} records`,
       } : false}
-      scroll={{ x: "max-content" }}
+      scroll={{ x: compact ? 1040 : "max-content" }}
       locale={{
         emptyText: (
           <Empty description={empty} image={Empty.PRESENTED_IMAGE_SIMPLE} />

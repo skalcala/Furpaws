@@ -1143,3 +1143,19 @@
 @media print {
   .report-layout { gap: 16px; }
 }
+
+/* Keep owner appointment records compact while retaining every column. */
+.page-content > .compact-appointment-tabs { padding: 8px 16px; }
+.page-content .compact-appointment-tabs .ant-tabs-nav { margin-bottom: 0; }
+.page-content .compact-appointment-tabs .ant-tabs-tab { padding: 8px 0; font-size: 13px; }
+.page-content > .compact-table { padding: 12px; }
+.page-content .compact-table .ant-table { font-size: 12px; }
+.page-content .compact-table .ant-table-thead > tr > th { padding: 10px 12px; font-size: 11px; }
+.page-content .compact-table .ant-table-tbody > tr > td { padding: 10px 12px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.page-content .compact-table .appointment-explanation { min-width: 0; max-width: none; margin: 0; font-size: 12px; }
+.page-content .compact-table .status { padding: 4px 8px; font-size: 11px; }
+.page-content .compact-table .ant-btn { min-height: 28px; height: 28px; padding: 0 10px; font-size: 12px; }
+.page-content .compact-table .ant-pagination { margin: 12px 0 0; font-size: 12px; }
+.page-content .compact-table .ant-pagination-item,
+.page-content .compact-table .ant-pagination-prev,
+.page-content .compact-table .ant-pagination-next { min-width: 28px; height: 28px; line-height: 26px; }

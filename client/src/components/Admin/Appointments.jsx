@@ -71,7 +71,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
       setReason("");
       await resource.refresh();
       message.success(`Appointment ${value.toLowerCase()}.`);
-      if (id) navigate("/admin/A2");
+      if (id) navigate("/admin/approvals");
     } catch (failure) {
       setError(errorMessage(failure));
       setErrors(failure.response?.data?.errors || {});
@@ -162,7 +162,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
         ) : queue ? (
           <Link
             className="button primary"
-            to={`/admin/${record.service?.type === "Vaccination" ? "A5a" : "A5"}/${record._id}?from=queue`}
+            to={`/admin/consultations/${record._id}?from=queue`}
           >
             Start Consultation
           </Link>
@@ -269,7 +269,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
               ? "Today’s Queue"
               : "Appointments · Table & Calendar"
         }
-        backTo={id ? "/admin/A2" : undefined}
+        backTo={id ? "/admin/approvals" : undefined}
         backLabel="Back to Approvals"
       />
       {!approval && !queue && (
@@ -308,7 +308,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
                 <div className="row spread">
                   <label>Queue date <Input aria-label="Queue date" type="date" value={queueDate} onChange={({ target: { value } }) => value && setQueueDate(value)} /></label>
                   <Button onClick={() => setQueueDate(dayKey())}>Today</Button>
-                  <Link className="button" to="/admin/A10">Schedule Settings</Link>
+                  <Link className="button" to="/admin/schedule-settings">Schedule Settings</Link>
                 </div>
                 {(() => {
                   const schedule = schedules.data[0];

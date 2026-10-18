@@ -413,9 +413,28 @@
   place-items: center;
   position: relative;
   min-height: 28px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
   font-size: 11px;
   color: var(--colorText);
   border-radius: 7px;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+.clinic-calendar-date:hover {
+  background: var(--colorBlush);
+}
+.clinic-calendar-date:focus-visible {
+  outline: 2px solid var(--colorPrimary);
+  outline-offset: 1px;
+}
+.clinic-calendar-date.is-selected:not(.is-today) {
+  background: var(--colorBlush);
+  color: var(--colorPrimary);
+  box-shadow: inset 0 0 0 1px var(--colorPrimary);
 }
 .clinic-calendar-date.is-today {
   background: var(--colorPrimary);

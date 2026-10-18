@@ -33,7 +33,7 @@ export default function Login() {
         setSuccess("Account created. Sign in to book your first appointment.");
       } else {
         const user = await login(values);
-        navigate(user.role === "ADMIN" ? "/admin/A1" : "/owner/U1");
+        navigate(user.role === "ADMIN" ? "/admin/dashboard" : "/owner/dashboard");
       }
     } catch (failure) {
       setError(errorMessage(failure));

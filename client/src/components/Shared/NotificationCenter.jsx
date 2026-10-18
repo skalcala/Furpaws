@@ -10,15 +10,15 @@ export function notificationTarget(notification, admin = false) {
   const pet = notification.pet?._id || notification.pet;
   const appointment = notification.appointment?._id || notification.appointment;
   if (admin) {
-    if (/new.*(?:appointment|booking)|booking request/i.test(title)) return appointment ? `/admin/A2a/${appointment}` : "/admin/A2";
-    if (/vaccin/i.test(title)) return "/admin/A7";
-    if (/medical|consultation|care|follow.up|prescription|record/i.test(title) && pet) return `/admin/A6c/${pet}`;
-    if (appointment || /appointment|booking|cancel|reschedul/i.test(title)) return "/admin/A3";
-    return pet ? `/admin/A6b/${pet}` : "/admin/A14";
+    if (/new.*(?:appointment|booking)|booking request/i.test(title)) return appointment ? `/admin/approvals/${appointment}` : "/admin/approvals";
+    if (/vaccin/i.test(title)) return "/admin/vaccinations";
+    if (/medical|consultation|care|follow.up|prescription|record/i.test(title) && pet) return `/admin/medical-records/${pet}`;
+    if (appointment || /appointment|booking|cancel|reschedul/i.test(title)) return "/admin/appointments";
+    return pet ? `/admin/pets/${pet}` : "/admin/notifications";
   }
-  if (/medical|vaccin|care|follow.up|prescription|record/i.test(title) && pet) return `/owner/U3c/${pet}`;
-  if (appointment || /appointment|booking|cancel|reschedul/i.test(title)) return "/owner/U9";
-  return pet ? `/owner/U3b/${pet}` : "/owner/U10";
+  if (/medical|vaccin|care|follow.up|prescription|record/i.test(title) && pet) return `/owner/medical-records/${pet}`;
+  if (appointment || /appointment|booking|cancel|reschedul/i.test(title)) return "/owner/my-appointments";
+  return pet ? `/owner/pets/${pet}` : "/owner/notifications";
 }
 
 export function NotificationFeed({ resource, admin = false, compact = false, inbox = false, onOpen }) {

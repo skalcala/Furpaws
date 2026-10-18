@@ -1,3 +1,4 @@
+import { screenFromPath } from "../../routes";
 import PictureUpload from "../Shared/PictureUpload";
 import PhoneVerification from "../Auth/PhoneVerification";
 import OwnerLanding from "./OwnerLanding";
@@ -76,7 +77,7 @@ const pageDescriptions = {
 export function PageHeading({ title, backTo, backLabel = "Back", onBack }) {
   const { user } = useAuth();
   const { pathname } = useLocation();
-  const screen = pathname.split("/")[2];
+  const screen = screenFromPath(user.role === "ADMIN" ? "admin" : "owner", pathname);
   const description =
     pageDescriptions[screen] ||
     (user.role === "ADMIN"
@@ -152,7 +153,7 @@ export function OwnerDashboard() {
         <DashboardCard
           eyebrow="Schedule"
           title="Upcoming Appointments"
-          action={{ to: "/owner/U9" }}
+          action={{ to: "/owner/my-appointments" }}
         >
           {approved ? (
             <div className="dashboard-next-visit">
@@ -195,7 +196,7 @@ export function OwnerDashboard() {
           <p className="owner-visit-guidance">
             Bring current medicines and arrive 10 minutes before your visit.
           </p>
-          <Link className="button dashboard-wide-button" to="/owner/U9">
+          <Link className="button dashboard-wide-button" to="/owner/my-appointments">
             View My Appointments
           </Link>
         </DashboardCard>
@@ -209,21 +210,21 @@ export function OwnerDashboard() {
                 title: "Check appointment updates",
                 text: `${pending.length} requests awaiting clinic review`,
                 icon: "calendar",
-                to: "/owner/U9",
+                to: "/owner/my-appointments",
                 action: "View",
               },
               {
                 title: "Read care reminders",
                 text: `${unread.length} unread notifications`,
                 icon: "bell",
-                to: "/owner/U10",
+                to: "/owner/notifications",
                 action: "Read",
               },
               {
                 title: "Review medical records",
                 text: "Your pets’ consultation and vaccine history",
                 icon: "record",
-                to: "/owner/U3?view=records",
+                to: "/owner/my-pets?view=records",
                 action: "Open",
               },
             ]}
@@ -516,7 +517,7 @@ export function PetCards({ pets, admin = false, select, selected }) {
                   ) : (
                     <Link
                       className="button"
-                      to={`/${admin ? "admin/A6b" : "owner/U3b"}/${_id}`}
+                      to={`/${admin ? "admin/pets" : "owner/pets"}/${_id}`}
                     >
                       View pet profile
                     </Link>
@@ -547,7 +548,7 @@ export function MyPets() {
       <RequestState {...pets} retry={pets.refresh}>
         {pets.data.length ? (
           <>
-            <div className="pets-collection-heading"><div><h2>Your companions</h2><p>{pets.data.length} {pets.data.length === 1 ? "pet" : "pets"} · Health stories, care and happy moments.</p></div><Link className="button primary" to="/owner/U4">Book a visit</Link></div>
+            <div className="pets-collection-heading"><div><h2>Your companions</h2><p>{pets.data.length} {pets.data.length === 1 ? "pet" : "pets"} · Health stories, care and happy moments.</p></div><Link className="button primary" to="/owner/book-appointment">Book a visit</Link></div>
             <PetCards pets={pets.data} />
           </>
         ) : (
@@ -559,7 +560,7 @@ export function MyPets() {
               record appointment; the pet stays hidden until approved or after
               the completed checkup.
             </p>
-            <Link className="button primary" to="/owner/U4">
+            <Link className="button primary" to="/owner/book-appointment">
               Book an appointment
             </Link>
           </Panel>
@@ -600,9 +601,9 @@ export function PetDetail({ admin = false }) {
         backTo={
           admin
             ? data.owner?._id
-              ? `/admin/A6a/${data.owner._id}`
-              : "/admin/A6"
-            : "/owner/U3"
+              ? `/admin/owners/${data.owner._id}`
+              : "/admin/pets-and-owners"
+            : "/owner/my-pets"
         }
         backLabel={admin ? "Back to Pets & Owners" : "Back to My Pets"}
       />
@@ -642,7 +643,7 @@ export function PetDetail({ admin = false }) {
           <div className="row">
             <Link
               className="button"
-              to={`/${admin ? "admin/A6c" : "owner/U3c"}/${id}`}
+              to={`/${admin ? "admin/medical-records" : "owner/medical-records"}/${id}`}
             >
               Medical Records
             </Link>
@@ -831,7 +832,7 @@ export function MedicalRecords({ admin = false }) {
     <>
       <PageHeading
         title={`Pet Medical Records${admin ? "" : " · View Only"}`}
-        backTo={`/${admin ? "admin/A6b" : "owner/U3b"}/${id}`}
+        backTo={`/${admin ? "admin/pets" : "owner/pets"}/${id}`}
         backLabel="Back to Pet Profile"
       />
       <RequestState {...records} retry={records.refresh}>
@@ -1029,7 +1030,7 @@ export function OwnerAppointments() {
                 ) : (
                   record.declineReason ||
                   (record.status === "Completed" ? (
-                    <Link to={`/owner/U3c/${record.pet?._id}`}>
+                    <Link to={`/owner/medical-records/${record.pet?._id}`}>
                       Medical records
                     </Link>
                   ) : (

@@ -40,11 +40,22 @@ export function AdminDashboard() {
   const medicines = useResource("/medicines");
   const users = useResource("/users");
   const today = dayKey();
+  const [selectedDate, setSelectedDate] = useState(today);
   const report = useResource(`/reports?start=${today}&end=${today}`);
   const { user } = useAuth();
   const visits = appointments.data.filter(
     ({ date, status }) =>
       date === today && !["Declined", "Cancelled"].includes(status),
+  );
+  const selectedVisits = appointments.data
+    .filter(
+      ({ date, status }) =>
+        date === selectedDate && !["Declined", "Cancelled"].includes(status),
+    )
+    .sort((a, b) => String(a.time || "").localeCompare(String(b.time || "")));
+  const selectedDateLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString(
+    "en-PH",
+    { weekday: "long", month: "long", day: "numeric" },
   );
   const queue = visits.filter(({ status }) => status === "Approved");
   const completed = visits.filter(({ status }) => status === "Completed");
@@ -72,7 +83,7 @@ export function AdminDashboard() {
               title: "Patient summary",
               text: `${pets.data.length} pets in the clinic · ${pending.length} booking requests to review`,
             }}
-            action={{ to: "/admin/A6", label: "View Pets & Owners" }}
+            action={{ to: "/admin/pets-and-owners", label: "View Pets & Owners" }}
           />
           <div className="dashboard-metrics">
             <MetricCard
@@ -114,12 +125,12 @@ export function AdminDashboard() {
           <DashboardCard eyebrow="Shortcuts" title="Quick Links">
             <ShortcutGrid
               items={[
-                { label: "Pets & Owners", to: "/admin/A6", icon: "pet" },
-                { label: "Appointments", to: "/admin/A3", icon: "calendar" },
-                { label: "Vaccinations", to: "/admin/A7", icon: "record" },
-                { label: "Medicines", to: "/admin/A8", icon: "pill" },
-                { label: "Consultations", to: "/admin/A5", icon: "check" },
-                { label: "Reports", to: "/admin/A12", icon: "report" },
+                { label: "Pets & Owners", to: "/admin/pets-and-owners", icon: "pet" },
+                { label: "Appointments", to: "/admin/appointments", icon: "calendar" },
+                { label: "Vaccinations", to: "/admin/vaccinations", icon: "record" },
+                { label: "Medicines", to: "/admin/medicine-inventory", icon: "pill" },
+                { label: "Consultations", to: "/admin/consultations", icon: "check" },
+                { label: "Reports", to: "/admin/reports", icon: "report" },
               ]}
             />
           </DashboardCard>
@@ -127,7 +138,7 @@ export function AdminDashboard() {
             <DashboardCard
               eyebrow="Live"
               title="Patient Queue Status"
-              action={{ to: "/admin/A4" }}
+              action={{ to: "/admin/todays-queue" }}
             >
               <StatusRing
                 items={[
@@ -186,15 +197,19 @@ export function AdminDashboard() {
           role="complementary"
           aria-label="Clinic activity"
         >
-          <ClinicCalendar appointments={appointments.data} />
+          <ClinicCalendar
+            appointments={appointments.data}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+          />
           <DashboardCard
             eyebrow="Schedule"
-            title="Today’s Appointments"
-            action={{ to: "/admin/A3" }}
+            title={selectedDate === today ? "Today’s Appointments" : `Appointments · ${selectedDateLabel}`}
+            action={{ to: "/admin/appointments" }}
           >
-            {visits.length ? (
+            {selectedVisits.length ? (
               <div className="dashboard-visit-list">
-                {visits
+                {selectedVisits
                   .slice(0, 3)
                   .map(({ _id, pet, owner, service, time, status }) => (
                     <div className="dashboard-visit" key={_id}>
@@ -214,10 +229,10 @@ export function AdminDashboard() {
                 <span className="dashboard-icon">
                   <DashboardIcon name="calendar" />
                 </span>
-                <p>No appointments scheduled for today.</p>
+                <p>No appointments scheduled for {selectedDate === today ? "today" : selectedDateLabel}.</p>
               </div>
             )}
-            <Link className="button dashboard-wide-button" to="/admin/A3">
+            <Link className="button dashboard-wide-button" to="/admin/appointments">
               View Full Schedule
             </Link>
           </DashboardCard>
@@ -228,21 +243,21 @@ export function AdminDashboard() {
                   title: "Review booking requests",
                   text: `${pending.length} requests awaiting a decision`,
                   icon: "calendar",
-                  to: "/admin/A2",
+                  to: "/admin/approvals",
                   action: "Review",
                 },
                 {
                   title: "Check medicine stock",
                   text: `${lowStock.length} medicines at or below stock threshold`,
                   icon: "pill",
-                  to: "/admin/A8",
+                  to: "/admin/medicine-inventory",
                   action: "View",
                 },
                 {
                   title: "Review medicine expiry",
                   text: `${expiry.length} medicines near expiry or expired`,
                   icon: "clock",
-                  to: "/admin/A8",
+                  to: "/admin/medicine-inventory",
                   action: "Open",
                 },
               ]}
@@ -253,7 +268,7 @@ export function AdminDashboard() {
                 Keep approvals and inventory up to date before the next clinic
                 visit.
               </span>
-              <Link to="/admin/A14">Notification log →</Link>
+              <Link to="/admin/notifications">Notification log →</Link>
             </div>
           </DashboardCard>
         </div>
@@ -283,7 +298,7 @@ export function Owners() {
     <>
       <PageHeading
         title={id ? "Owner Profile & Pets" : "Pets & Owners · Owner List"}
-        backTo={id ? "/admin/A6" : undefined}
+        backTo={id ? "/admin/pets-and-owners" : undefined}
         backLabel="Back to Owners"
       />
       <RequestState {...users} retry={users.refresh}>
@@ -339,7 +354,7 @@ export function Owners() {
                 {
                   title: "Action",
                   render: (_, { _id }) => (
-                    <Link className="button" to={`/admin/A6a/${_id}`}>
+                    <Link className="button" to={`/admin/owners/${_id}`}>
                       View
                     </Link>
                   ),
@@ -869,7 +884,7 @@ export function Vaccinations() {
     {
       title: "Action",
       render: (_, { pet }) => (
-        <Link to={`/admin/A6c/${pet?._id}`}>Pet records</Link>
+        <Link to={`/admin/medical-records/${pet?._id}`}>Pet records</Link>
       ),
     },
     {

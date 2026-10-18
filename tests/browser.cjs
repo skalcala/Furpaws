@@ -58,7 +58,7 @@ fs.mkdirSync(output, { recursive: true });
   await page
     .getByRole("button", { name: "Submit Appointment", exact: true })
     .click();
-  await page.waitForURL("**/owner/U8");
+  await page.waitForURL("**/owner/book-appointment/confirmation");
   console.log("Owner booking completed");
   await page.screenshot({
     path: `${output}/flow-confirmation.png`,
@@ -78,7 +78,7 @@ fs.mkdirSync(output, { recursive: true });
   if (!appointment) throw new Error("Pending booking missing");
   await page.evaluate(() => sessionStorage.clear());
   await login("admin@furpaws.test");
-  await page.goto("http://127.0.0.1:3000/admin/A2");
+  await page.goto("http://127.0.0.1:3000/admin/approvals");
   await page
     .getByRole("row")
     .filter({ hasText: petName })
@@ -101,7 +101,7 @@ fs.mkdirSync(output, { recursive: true });
   await page.getByRole("button", { name: "Approve", exact: true }).click();
   await page.waitForTimeout(600);
   console.log("Admin approval and required reason verified");
-  await page.goto(`http://127.0.0.1:3000/admin/A5/${appointment._id}`);
+  await page.goto(`http://127.0.0.1:3000/admin/consultations/${appointment._id}`);
   await page.locator("#weight").fill("4.1");
   await page.locator("#diagnosis").fill("Routine wellness exam");
   await page.locator("#symptoms").fill("Routine checkup");
@@ -122,7 +122,7 @@ fs.mkdirSync(output, { recursive: true });
   await page
     .getByRole("button", { name: "Save and Complete", exact: true })
     .click();
-  await page.waitForURL("**/admin/A11");
+  await page.waitForURL("**/admin/billing-and-payments");
   console.log("Consultation completion and automatic billing verified");
   await page.screenshot({ path: `${output}/flow-bill.png`, fullPage: true });
   const adminToken = await page.evaluate(() =>
@@ -137,7 +137,7 @@ fs.mkdirSync(output, { recursive: true });
     throw new Error("Bill missing");
   await page.evaluate(() => sessionStorage.clear());
   await login("ava@furpaws.test");
-  await page.goto(`http://127.0.0.1:3000/owner/U3c/${appointment.pet._id}`);
+  await page.goto(`http://127.0.0.1:3000/owner/medical-records/${appointment.pet._id}`);
   await page.getByText("Routine wellness exam", { exact: true }).waitFor();
   await page.screenshot({
     path: `${output}/flow-owner-records.png`,

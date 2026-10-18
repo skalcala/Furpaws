@@ -17,12 +17,12 @@ export default function OwnerLanding({ user }) {
         <h1>Hello, {user.name.split(" ")[0]}.</h1>
         <p>{date}</p>
         <div className="owner-banner-actions">
-          <Link className="button owner-banner-primary" to="/owner/U4">
+          <Link className="button owner-banner-primary" to="/owner/book-appointment">
             <CalendarOutlined aria-hidden="true" /> Book an appointment
           </Link>
           <Link
             className="button owner-banner-secondary"
-            to="/owner/U3?view=records"
+            to="/owner/my-pets?view=records"
           >
             <FileProtectOutlined aria-hidden="true" /> Medical records
           </Link>

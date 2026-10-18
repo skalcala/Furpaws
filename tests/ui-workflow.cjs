@@ -133,7 +133,7 @@ delete env.VERCEL;
       await page.setViewportSize({ width: 1440, height: 1000 });
       await login("09175550142");
       const pets = await get("/pets");
-      await page.goto(root + "/owner/U3b/" + pets[0]._id);
+      await page.goto(root + "/owner/pets/" + pets[0]._id);
       const uploaded = page.waitForResponse(
         (r) =>
           r.url().includes("/api/pets/") && r.request().method() === "PATCH",
@@ -150,7 +150,7 @@ delete env.VERCEL;
       );
       await shot("owner-photo");
       console.log("Photo upload saved and persisted.");
-      await page.goto(root + "/owner/U4");
+      await page.goto(root + "/owner/book-appointment");
       await page.getByRole("button", { name: /No record.*Register/ }).click();
       await page.getByRole("button", { name: "Continue", exact: true }).click();
       await page.getByLabel("Pet name", { exact: true }).fill("Browser intake");
@@ -171,7 +171,7 @@ delete env.VERCEL;
       assert.equal(await weight.inputValue(), "123");
       await weight.fill("3.4");
       await page.getByRole("button", { name: "Continue", exact: true }).click();
-      await page.waitForURL("**/owner/U6");
+      await page.waitForURL("**/owner/book-appointment/schedule");
       await page
         .locator(".ant-select")
         .filter({ has: page.locator("#service") })
@@ -184,7 +184,7 @@ delete env.VERCEL;
       console.log(
         "Numeric field blocks letters; No record disables follow-up.",
       );
-      await page.goto(root + "/owner/U4");
+      await page.goto(root + "/owner/book-appointment");
       await page.getByRole("button", { name: /With record.*Select/ }).click();
       await page
         .getByRole("button", { name: "Select pet", exact: true })
@@ -205,7 +205,7 @@ delete env.VERCEL;
       await shot("optional-followup");
       await page.evaluate(() => sessionStorage.clear());
       await login("admin@furpaws.test");
-      await page.goto(root + "/admin/A5");
+      await page.goto(root + "/admin/consultations");
       await page
         .getByRole("button", { name: "Emergency consultation", exact: true })
         .click();
@@ -267,12 +267,12 @@ delete env.VERCEL;
       await page
         .getByRole("button", { name: "Save and Complete", exact: true })
         .click();
-      await page.waitForURL("**/admin/A11");
+      await page.waitForURL("**/admin/billing-and-payments");
       await page.locator("#selected-bill").waitFor();
       await page
         .getByRole("button", { name: "Print Bill", exact: true })
         .waitFor();
-      await page.goto(root + "/admin/A5?tab=followups");
+      await page.goto(root + "/admin/consultations?tab=followups");
       await page
         .getByRole("cell", { name: "Browser Emergency Patient", exact: true })
         .waitFor();

@@ -47,7 +47,7 @@ export default function EmergencyConsultation({ open, onClose }) {
       };
       const { data } = await api.post("/consultations/emergency", payload);
       onClose();
-      navigate(`/admin/A5/${data._id}`);
+      navigate(`/admin/consultations/${data._id}`);
     } catch (e) {
       setError(errorMessage(e));
       setExisting(e.response?.data?.errors?.existingAppointment || "");
@@ -76,8 +76,8 @@ export default function EmergencyConsultation({ open, onClose }) {
             onClose();
             navigate(
               existingStatus === "Pending"
-                ? `/admin/A2a/${existing}`
-                : `/admin/A5/${existing}`,
+                ? `/admin/approvals/${existing}`
+                : `/admin/consultations/${existing}`,
             );
           }}
         >

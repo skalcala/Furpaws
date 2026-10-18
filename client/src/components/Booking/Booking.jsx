@@ -1,3 +1,4 @@
+import { screenPath, screenFromPath } from "../../routes";
 import NumericInput from "../Shared/NumericInput";
 import PictureUpload from "../Shared/PictureUpload";
 import PetRegistrationFields from "../Shared/PetRegistrationFields";
@@ -323,7 +324,7 @@ export default function Booking() {
   const services = useResource("/services");
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const step = pathname.split("/").at(-1);
+  const step = screenFromPath("owner", pathname);
   const [form] = Form.useForm();
   useEffect(() => {
     sessionStorage.setItem("furpawsDraft", JSON.stringify(draft));
@@ -337,7 +338,7 @@ export default function Booking() {
   }, [step, form, draft.registration]);
   const pet = pets.data.find(({ _id }) => _id === draft.pet);
   const service = services.data.find(({ _id }) => _id === draft.service);
-  const go = (screen) => navigate(`/owner/${screen}`);
+  const go = (screen) => navigate(`/owner/${screenPath("owner", screen)}`);
   const updateSchedule = (nextDraft) => {
     setDraft(nextDraft);
     const length = (nextDraft.reasonForVisit || "").trim().length;
@@ -690,10 +691,10 @@ export default function Booking() {
               ]}
             />
             <div className="row booking-actions">
-              <Link className="button primary" to="/owner/U9">
+              <Link className="button primary" to="/owner/my-appointments">
                 View My Appointments
               </Link>
-              <Link className="button" to="/owner/U1">
+              <Link className="button" to="/owner/dashboard">
                 Back to Dashboard
               </Link>
             </div>
@@ -705,7 +706,7 @@ export default function Booking() {
         ) : (
           <Panel>
             <p>No submitted appointment to display.</p>
-            <Link to="/owner/U4">Book an appointment</Link>
+            <Link to="/owner/book-appointment">Book an appointment</Link>
           </Panel>
         ))}
       {phase && (

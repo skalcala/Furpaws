@@ -1,3 +1,4 @@
+import { screenPath, screenFromPath } from "../../routes";
 import { useEffect, useState } from "react";
 import { Badge, Button, Drawer, Dropdown, Input, Popover } from "antd";
 import {
@@ -120,7 +121,7 @@ export default function Layout() {
   const notificationCount = notifications.data.filter(({ read }) => !read).length;
 
   const navigation = isAdmin ? adminNavigation : ownerNavigation;
-  const screen = pathname.split("/")[2];
+  const screen = screenFromPath(isAdmin ? "admin" : "owner", pathname);
   const parentScreen = /^U[4-8]/.test(screen)
     ? "U4"
     : /^U3/.test(screen)
@@ -143,7 +144,7 @@ export default function Layout() {
           return (
             <NavLink
               key={label}
-              to={`${root}${id}`}
+              to={`${root}${screenPath(isAdmin ? "admin" : "owner", id)}`}
               className={() =>
                 `sidebar-link${active ? " active" : ""}${groupStart ? " sidebar-group-start" : ""}`
               }
@@ -168,7 +169,7 @@ export default function Layout() {
         >
           ☰
         </Button>
-        <Link className="app-brand" to={`${root}${isAdmin ? "A1" : "U1"}`}>
+        <Link className="app-brand" to={`${root}dashboard`}>
           <Logo />
           {!isAdmin && <span className="owner-brand-caption">Veterinary Clinic</span>}
         </Link>
@@ -180,7 +181,7 @@ export default function Layout() {
             value={query}
             onChange={({ target: { value } }) => setQuery(value)}
             onSearch={() =>
-              navigate(`/admin/A6?q=${encodeURIComponent(query)}`)
+              navigate(`/admin/pets-and-owners?q=${encodeURIComponent(query)}`)
             }
           />
         ) : (
@@ -217,7 +218,7 @@ export default function Layout() {
               />
               <Link
                 className="notification-view-all"
-                to={`${root}${isAdmin ? "A14" : "U10"}`}
+                to={`${root}notifications`}
                 onClick={() => setNotificationsOpen(false)}
               >
                 View all notifications
@@ -258,7 +259,7 @@ export default function Layout() {
             onClick: ({ key }) => {
               setAccountMenuOpen(false);
               if (key === "settings")
-                navigate(isAdmin ? "/admin/settings" : "/owner/U2");
+                navigate(isAdmin ? "/admin/settings" : "/owner/settings");
               if (key === "logout") {
                 logout();
                 navigate("/login");

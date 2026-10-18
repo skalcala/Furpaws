@@ -1,4 +1,5 @@
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { adminPaths, ownerPaths, screenPath } from "./routes";
+import { Navigate, Outlet, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { Spin } from "antd";
 import { useAuth } from "./components/Auth/AuthContext";
 import Login from "./components/Auth/Login";
@@ -26,6 +27,11 @@ import {
   ScheduleSettings,
   Vaccinations,
 } from "./components/Admin/Management";
+function LegacyRoute({ role, screen }) {
+  const { id } = useParams();
+  const { search, hash } = useLocation();
+  return <Navigate to={`/${role}/${screenPath(role, screen)}${id ? '/' + encodeURIComponent(id) : ''}${search}${hash}`} replace />;
+}
 function Protected({ role }) {
   const { user, loading } = useAuth();
   if (loading)
@@ -38,7 +44,7 @@ function Protected({ role }) {
   if (user.role !== role)
     return (
       <Navigate
-        to={user.role === "ADMIN" ? "/admin/A1" : "/owner/U1"}
+        to={user.role === "ADMIN" ? "/admin/dashboard" : "/owner/dashboard"}
         replace
       />
     );
@@ -50,7 +56,7 @@ function Home() {
     <Spin />
   ) : (
     <Navigate
-      to={user ? (user.role === "ADMIN" ? "/admin/A1" : "/owner/U1") : "/"}
+      to={user ? (user.role === "ADMIN" ? "/admin/dashboard" : "/owner/dashboard") : "/"}
       replace
     />
   );
@@ -62,64 +68,66 @@ export default function AppController() {
       <Route path="/login" element={<Login />} />
       <Route element={<Protected role="OWNER" />}>
         <Route path="/owner" element={<Layout />}>
-          <Route index element={<Navigate to="U1" replace />} />
-          <Route path="U1" element={<OwnerDashboard />} />
-          <Route path="U2" element={<AccountSettings />} />
-          <Route
-            path="settings"
-            element={<Navigate to="/owner/U2" replace />}
-          />
-          <Route path="U3" element={<MyPets />} />
-          <Route path="U3a" element={<MyPets />} />
-          <Route path="U3b/:id" element={<PetDetail />} />
-          <Route path="U3c/:id" element={<MedicalRecords />} />
-          {["U4", "U5", "U6", "U7", "U8"].map((path) => (
-            <Route key={path} path={path} element={<Booking />} />
+          {Object.keys(ownerPaths).flatMap(screen => [
+            <Route key={screen} path={screen} element={<LegacyRoute role="owner" screen={screen} />} />,
+            <Route key={screen + '-detail'} path={screen + '/:id'} element={<LegacyRoute role="owner" screen={screen} />} />
+          ])}
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<OwnerDashboard />} />
+          <Route path="settings" element={<AccountSettings />} />
+
+          <Route path="my-pets" element={<MyPets />} />
+          <Route path="pets/:id" element={<PetDetail />} />
+          <Route path="medical-records/:id" element={<MedicalRecords />} />
+          {["U4", "U5", "U6", "U7", "U8"].map((screen) => (
+            <Route key={screen} path={ownerPaths[screen]} element={<Booking />} />
           ))}
-          <Route path="U6a" element={<Navigate to="/owner/U6" replace />} />
-          <Route path="U9" element={<OwnerAppointments />} />
-          <Route path="U10" element={<Notifications />} />
+
+          <Route path="my-appointments" element={<OwnerAppointments />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
       </Route>
       <Route element={<Protected role="ADMIN" />}>
         <Route path="/admin" element={<Layout />}>
-          <Route index element={<Navigate to="A1" replace />} />
-          <Route path="A1" element={<AdminDashboard />} />
-          <Route path="A2" element={<AdminAppointments mode="approvals" />} />
+          {Object.keys(adminPaths).flatMap(screen => [
+            <Route key={screen} path={screen} element={<LegacyRoute role="admin" screen={screen} />} />,
+            <Route key={screen + '-detail'} path={screen + '/:id'} element={<LegacyRoute role="admin" screen={screen} />} />
+          ])}
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="approvals" element={<AdminAppointments mode="approvals" />} />
           <Route
-            path="A2a/:id"
+            path="approvals/:id"
             element={<AdminAppointments mode="approvals" />}
           />
-          <Route path="A2b" element={<Navigate to="/admin/A2" replace />} />
-          <Route path="A3" element={<AdminAppointments />} />
-          <Route path="A4" element={<AdminAppointments mode="queue" />} />
-          <Route path="A5" element={<Consultation />} />
-          <Route path="A5/:id" element={<Consultation />} />
-          <Route path="A5a/:id" element={<Consultation />} />
-          <Route path="A5b" element={<Navigate to="/admin/A5" replace />} />
-          <Route path="A5c" element={<Navigate to="/admin/A5" replace />} />
-          <Route path="A6" element={<Owners />} />
-          <Route path="A6a/:id" element={<Owners />} />
-          <Route path="A6b/:id" element={<PetDetail admin />} />
-          <Route path="A6c/:id" element={<MedicalRecords admin />} />
-          <Route path="A7" element={<Vaccinations />} />
+
+          <Route path="appointments" element={<AdminAppointments />} />
+          <Route path="todays-queue" element={<AdminAppointments mode="queue" />} />
+          <Route path="consultations" element={<Consultation />} />
+          <Route path="consultations/:id" element={<Consultation />} />
+
+          <Route path="pets-and-owners" element={<Owners />} />
+          <Route path="owners/:id" element={<Owners />} />
+          <Route path="pets/:id" element={<PetDetail admin />} />
+          <Route path="medical-records/:id" element={<MedicalRecords admin />} />
+          <Route path="vaccinations" element={<Vaccinations />} />
           <Route
-            path="A8"
+            path="medicine-inventory"
             element={<ResourceManager key="medicines" resource="medicines" />}
           />
           <Route
-            path="A9"
+            path="services"
             element={<ResourceManager key="services" resource="services" />}
           />
-          <Route path="A10" element={<ScheduleSettings />} />
-          <Route path="A11" element={<Billing />} />
-          <Route path="A12" element={<Reports />} />
+          <Route path="schedule-settings" element={<ScheduleSettings />} />
+          <Route path="billing-and-payments" element={<Billing />} />
+          <Route path="reports" element={<Reports />} />
           <Route
-            path="A13"
+            path="expenses"
             element={<ResourceManager key="expenses" resource="expenses" />}
           />
-          <Route path="A14" element={<Notifications admin />} />
-          <Route path="A15" element={<AuditLogs />} />
+          <Route path="notifications" element={<Notifications admin />} />
+          <Route path="audit-logs" element={<AuditLogs />} />
           <Route path="settings" element={<AccountSettings />} />
         </Route>
       </Route>

@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -59,7 +59,8 @@ app.use((error, req, res, next) => {
   res.status(status).json({ message, errors });
 });
 const start = async () => {
-  if (!process.env.JWT_SECRET) throw new Error("Set JWT_SECRET in .env.");
+  if (!process.env.MONGODB_URI || !process.env.JWT_SECRET)
+    throw new Error("Set MONGODB_URI and JWT_SECRET in server/.env before starting the clinic API.");
   await mongoose.connect(process.env.MONGODB_URI);
   for (const Model of Object.values(require("./models"))) await Model.init();
   const { generateReminders } = require("./utils/reminders");

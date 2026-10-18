@@ -107,7 +107,7 @@ fs.mkdirSync(output, { recursive: true });
       (draft) => sessionStorage.setItem("furpawsDraft", JSON.stringify(draft)),
       draft,
     );
-    await page.goto(`${root}/owner/U6`);
+    await page.goto(`${root}/owner/book-appointment/schedule`);
     await page.locator("#reasonForVisit").waitFor();
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page
@@ -116,14 +116,14 @@ fs.mkdirSync(output, { recursive: true });
         { exact: true },
       )
       .waitFor();
-    assert.ok(page.url().endsWith("/owner/U6"));
+    assert.ok(page.url().endsWith("/owner/book-appointment/schedule"));
     await page.locator("#reasonForVisit").fill(explanation);
     await page.screenshot({
       path: `${output}/consultation-symptoms.png`,
       fullPage: true,
     });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
-    await page.waitForURL("**/owner/U7");
+    await page.waitForURL("**/owner/book-appointment/review");
     await page.getByText(explanation, { exact: true }).waitFor();
     const response = page.waitForResponse(
       (response) =>
@@ -137,7 +137,7 @@ fs.mkdirSync(output, { recursive: true });
     assert.ok(saved._id);
     created.push(saved._id);
     assert.equal(saved.reasonForVisit, explanation);
-    await page.waitForURL("**/owner/U8");
+    await page.waitForURL("**/owner/book-appointment/confirmation");
     await page.getByText(explanation, { exact: true }).waitFor();
     console.log(
       "Consultation: required details, review, persistence, and confirmation passed.",
@@ -148,7 +148,7 @@ fs.mkdirSync(output, { recursive: true });
       (draft) => sessionStorage.setItem("furpawsDraft", JSON.stringify(draft)),
       { ...draft, ...followupSlot, service: followup._id },
     );
-    await page.goto(`${root}/owner/U6`);
+    await page.goto(`${root}/owner/book-appointment/schedule`);
     await page
       .getByText("Follow-up details and current symptoms", { exact: false })
       .waitFor();
@@ -167,7 +167,7 @@ fs.mkdirSync(output, { recursive: true });
       fullPage: true,
     });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
-    await page.waitForURL("**/owner/U7");
+    await page.waitForURL("**/owner/book-appointment/review");
     await page.getByText(progress, { exact: true }).waitFor();
     const followupResponse = page.waitForResponse(
       (response) =>
@@ -188,7 +188,7 @@ fs.mkdirSync(output, { recursive: true });
       (draft) => sessionStorage.setItem("furpawsDraft", JSON.stringify(draft)),
       { ...draft, service: vaccine._id },
     );
-    await page.goto(`${root}/owner/U6`);
+    await page.goto(`${root}/owner/book-appointment/schedule`);
     await page.locator("#service").waitFor();
     assert.equal(await page.locator("#reasonForVisit").count(), 0);
     for (const route of ["U1", "U2", "U3", "U4", "U9", "U10"]) {
@@ -223,15 +223,15 @@ fs.mkdirSync(output, { recursive: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await margin(0);
     await page.setViewportSize({ width: 1536, height: 1000 });
-    await page.goto(`${root}/admin/A2a/${saved._id}`);
+    await page.goto(`${root}/admin/approvals/${saved._id}`);
     await page.getByText(explanation, { exact: true }).waitFor();
     await page.screenshot({
       path: `${output}/admin-owner-explanation.png`,
       fullPage: true,
     });
     await page.getByRole("button", { name: "Approve", exact: true }).click();
-    await page.waitForURL("**/admin/A2");
-    await page.goto(`${root}/admin/A5/${saved._id}`);
+    await page.waitForURL("**/admin/approvals");
+    await page.goto(`${root}/admin/consultations/${saved._id}`);
     await page.getByText(explanation, { exact: true }).waitFor();
     await page.screenshot({
       path: `${output}/consultation-owner-history.png`,

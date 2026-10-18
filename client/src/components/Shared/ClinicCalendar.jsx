@@ -3,7 +3,11 @@ import { Button } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { dayKey } from "../../api";
 
-export default function ClinicCalendar({ appointments = [] }) {
+export default function ClinicCalendar({
+  appointments = [],
+  selectedDate,
+  onSelectDate,
+}) {
   const today = dayKey();
   const [month, setMonth] = useState(() => new Date(`${today}T12:00:00`));
   const year = month.getFullYear(),
@@ -54,15 +58,17 @@ export default function ClinicCalendar({ appointments = [] }) {
         {Array.from({ length }, (_, i) => {
           const date = `${year}-${String(index + 1).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`;
           return (
-            <time
+            <button
               key={date}
-              dateTime={date}
+              type="button"
               aria-current={date === today ? "date" : undefined}
-              className={`clinic-calendar-date${date === today ? " is-today" : ""}${visits[date] ? " has-visits" : ""}`}
+              aria-pressed={date === selectedDate}
+              className={`clinic-calendar-date${date === today ? " is-today" : ""}${date === selectedDate ? " is-selected" : ""}${visits[date] ? " has-visits" : ""}`}
               title={`${date}${visits[date] ? ` · ${visits[date]} appointments` : ""}`}
+              onClick={() => onSelectDate?.(date)}
             >
               {i + 1}
-            </time>
+            </button>
           );
         })}
       </div>

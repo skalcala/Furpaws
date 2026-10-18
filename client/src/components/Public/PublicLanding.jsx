@@ -57,7 +57,7 @@ const links = [
 export default function PublicLanding() {
   const [menu, setMenu] = useState(false);
   const { user } = useAuth();
-  const portal = user?.role === "ADMIN" ? "/admin/A1" : "/owner/U1";
+  const portal = user?.role === "ADMIN" ? "/admin/dashboard" : "/owner/dashboard";
   useEffect(() => {
     const previous = document.title;
     document.title = "FurPaws | A healthier, happier life for your pets";

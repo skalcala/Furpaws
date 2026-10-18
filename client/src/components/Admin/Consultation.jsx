@@ -91,7 +91,7 @@ export default function Consultation() {
   const change = (key, value) => setValues((v) => ({ ...v, [key]: value }));
   const leave = () => {
     const go = () =>
-      navigate(params.get("from") === "queue" ? "/admin/A4" : "/admin/A5");
+      navigate(params.get("from") === "queue" ? "/admin/todays-queue" : "/admin/consultations");
     if (
       values.weight ||
       values.diagnosis ||
@@ -154,7 +154,7 @@ export default function Consultation() {
           ? `Visit completed. Bill ${money(data.bill.total)} created. Next vaccination booked for ${formatDate(data.nextAppointment.date)}, ${formatTime(data.nextAppointment.time)}; the owner was notified.`
           : `Visit completed. Bill ${money(data.bill.total)} created.`,
       );
-      navigate("/admin/A11");
+      navigate("/admin/billing-and-payments");
     } catch (e) {
       setError(errorMessage(e));
       setErrors(e.response?.data?.errors || {});
@@ -181,7 +181,7 @@ export default function Consultation() {
             {
               title: "Record",
               render: (_, r) => (
-                <Link className="button" to={`/admin/A6c/${r.pet?._id}`}>
+                <Link className="button" to={`/admin/medical-records/${r.pet?._id}`}>
                   View medical record
                 </Link>
               ),
@@ -190,7 +190,7 @@ export default function Consultation() {
         />
       </RequestState>
       <Note>
-        Start a consultation from <Link to="/admin/A4">Today’s Queue</Link>{" "}
+        Start a consultation from <Link to="/admin/todays-queue">Today’s Queue</Link>{" "}
         once the booking is approved.
       </Note>
     </Panel>
@@ -218,7 +218,7 @@ export default function Consultation() {
             ? "Emergency Consultation"
             : "Consultation"
         }
-        backTo={params.get("from") === "queue" ? "/admin/A4" : "/admin/A5"}
+        backTo={params.get("from") === "queue" ? "/admin/todays-queue" : "/admin/consultations"}
         backLabel={
           params.get("from") === "queue"
             ? "Back to Queue"

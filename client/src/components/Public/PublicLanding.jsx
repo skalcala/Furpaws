@@ -218,7 +218,7 @@ export default function PublicLanding() {
               <DashboardIcon name="pet" />
               <HeartOutlined aria-hidden="true" />
             </div>
-            <img src="/assets/stock/pets-magnific.jpg" alt="" loading="lazy" />
+            <img src="/assets/stock/booking-pets-pexels.jpg" alt="An owner gently holding a dachshund and a calico cat" width="1200" height="715" loading="lazy" />
           </div>
         </section>
         <section className="public-how-section" id="how-it-works">
@@ -319,6 +319,10 @@ export default function PublicLanding() {
               rel="noreferrer"
             >
               Veterinary photo by Magnific / Freepik
+            </a>
+            <span aria-hidden="true"> · </span>
+            <a href="https://www.pexels.com/photo/person-holding-a-brown-dog-and-a-cat-6821106/" target="_blank" rel="noreferrer">
+              Booking photo by Nadia Vasil’eva on Pexels
             </a>
           </div>
           <div className="public-footer-bottom">

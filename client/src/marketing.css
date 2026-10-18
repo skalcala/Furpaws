@@ -1000,9 +1000,9 @@
 }
 .public-booking-banner > img {
   align-self: center;
-  height: var(--size180);
-  object-fit: cover;
-  object-position: 35% 50%;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
   margin-bottom: 0;
   border-radius: var(--size12);
 }

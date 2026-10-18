@@ -95,12 +95,21 @@ export function SchedulePicker({
     if (!value.date) return;
     let active = true;
     setSlots([]);
-    api
+    const refresh = () => api
       .get(`/appointments/slots?date=${value.date}${rescheduleQuery}`)
-      .then(({ data }) => active && setSlots(data.slots))
+      .then(({ data }) => {
+        if (!active) return;
+        setSlots(data.slots);
+        setAvailability(current => ({ ...current, [value.date]: data.slots }));
+      })
       .catch((failure) => active && setError(errorMessage(failure)));
+    refresh();
+    const interval = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
     return () => {
       active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
     };
   }, [value.date, rescheduleQuery, retry]);
   const chooseDate = (date) => onChange({ ...value, date, time: "" });
@@ -270,17 +279,9 @@ export function SchedulePicker({
             {slots.map(({ time, status }) => (
               <Button
                 key={time}
-                disabled={["Blocked", "Past"].includes(status)}
-                type={value.time === time ? "primary" : "default"}
-                onClick={() =>
-                  status === "Full"
-                    ? modal.info({
-                        title: "Slot Is Full",
-                        content:
-                          "This slot is full. Choose another available time.",
-                      })
-                    : onChange({ ...value, time })
-                }
+                disabled={status !== "Available"}
+                type={value.time === time && status === "Available" ? "primary" : "default"}
+                onClick={() => onChange({ ...value, time })}
               >
                 {formatTime(time)}
                 {status !== "Available" ? ` · ${status}` : ""}
@@ -289,8 +290,8 @@ export function SchedulePicker({
           </div>
           {errors.time && <small className="error-text">{errors.time}</small>}
           <p className="muted">
-            Full slots show a warning. Blocked and past slots cannot be
-            selected.
+            Each visit reserves one 30-minute slot. Pending and approved bookings
+            make that time unavailable.
           </p>
         </Panel>
       </div>

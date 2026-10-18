@@ -3,9 +3,9 @@ const mongoose = require("mongoose");
 const ScheduleSchema = new mongoose.Schema(
   {
     key: { type: String, default: "clinic", unique: true },
-    capacity: { type: Number, min: 1, max: 100, default: 3 },
+    capacity: { type: Number, min: 1, max: 1, default: 1 },
     dailyCapacity: { type: Number, min: 1, max: 1000, default: 18 },
-    times: { type: [String], default: ["09:00", "10:30", "11:30", "14:00"] },
+    times: { type: [String], default: () => Array.from({ length: 18 }, (_, i) => `${String(8 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`) },
     blockedDates: { type: [String], default: [] },
     holidays: { type: [String], default: [] },
     leaveDates: { type: [String], default: [] },

@@ -1,0 +1,52 @@
+/* Use the space beside the admin sidebar while preserving a comfortable gutter. */
+.admin-app.admin-refined .workspace > .page-content {
+  max-width: none;
+  margin-inline: 0;
+  padding: 24px 28px 36px;
+  min-width: 0;
+}
+.admin-refined .clinic-overview { max-width: none; }
+.consultation-form-layout,
+.consultation-wide,
+.prescription-editor { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.consultation-form-layout .consultation-clinical {
+  display: grid;
+  grid-template-columns: minmax(160px, .6fr) repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.consultation-clinical > .row:first-child { grid-column: 1 / -1; }
+.consultation-clinical > .two-columns { grid-column: span 2; }
+.prescription-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.prescription-grid .field { min-width: 0; }
+.prescription-grid .ant-select,
+.prescription-grid .ant-input-number { width: 100%; }
+.prescription-add-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; padding-top: 18px; border-top: 1px solid var(--colorBorder); }
+.consultation-notes { display: grid !important; grid-template-columns: minmax(180px, .65fr) minmax(0, 2fr); align-items: start; }
+.consultation-notes > .row:first-child { grid-column: 1 / -1; }
+@media (max-width: 1100px) {
+  .prescription-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .admin-app.admin-refined .workspace > .page-content { padding: 18px 16px 28px; }
+  .consultation-form-layout .consultation-clinical,
+  .consultation-notes { grid-template-columns: minmax(0, 1fr); }
+  .consultation-clinical > .two-columns { grid-column: auto; }
+}
+@media (max-width: 520px) {
+  .prescription-grid { grid-template-columns: minmax(0, 1fr); }
+  .prescription-add-actions > button { width: 100%; }
+}
+
+.consultation-patient-details .details { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px 28px; }
+.consultation-patient-details .details > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.consultation-patient-details .details dd { overflow-wrap: anywhere; }
+.consultation-form-layout .consultation-vaccination { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.consultation-vaccination > .two-columns { display: contents; }
+@media (max-width: 1100px) {
+  .consultation-patient-details .details,
+  .consultation-form-layout .consultation-vaccination { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .consultation-patient-details .details,
+  .consultation-form-layout .consultation-vaccination { grid-template-columns: minmax(0, 1fr); }
+}

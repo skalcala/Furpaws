@@ -678,7 +678,7 @@ export function ScheduleSettings() {
   const open = () => {
     form.setFieldsValue({
       ...schedule,
-      times: schedule.times.join(", "),
+      capacity: 1,
       blockedDates: schedule.blockedDates.join(", "),
       holidays: schedule.holidays.join(", "),
       leaveDates: schedule.leaveDates.join(", "),
@@ -692,7 +692,7 @@ export function ScheduleSettings() {
       const data = {
         ...values,
         ...Object.fromEntries(
-          ["times", "blockedDates", "holidays", "leaveDates"].map((key) => [
+          ["blockedDates", "holidays", "leaveDates"].map((key) => [
             key,
             String(values[key] || "")
               .split(",")
@@ -754,7 +754,8 @@ export function ScheduleSettings() {
                     entries={[
                       ["Maximum bookings per slot", schedule.capacity],
                       ["Maximum bookings per day", schedule.dailyCapacity],
-                      ["Time slots", schedule.times.join(" · ")],
+                      ["Appointment interval", "30 minutes"],
+                      ["Time slots", "Generated automatically from clinic hours"],
                     ]}
                   />
                 </Panel>
@@ -791,7 +792,7 @@ export function ScheduleSettings() {
         <Form form={form} layout="vertical" onFinish={save}>
           <div className="two-columns">
             {[
-              ["capacity", "Maximum bookings per slot", 100],
+              ["capacity", "Appointments per 30-minute slot", 1],
               ["dailyCapacity", "Maximum bookings per day", 1000],
             ].map(([name, label, max]) => (
               <Form.Item
@@ -800,12 +801,11 @@ export function ScheduleSettings() {
                 label={label}
                 rules={[{ required: true, type: "number", min: 1, max }]}
               >
-                <NumericInput min={1} max={max} precision={0} />
+                <NumericInput min={1} max={max} precision={0} disabled={name === "capacity"} />
               </Form.Item>
             ))}
           </div>
           {[
-            ["times", "Time slots (HH:mm, comma separated)"],
             ["blockedDates", "Blocked dates (YYYY-MM-DD, comma separated)"],
             ["holidays", "Holidays (YYYY-MM-DD, comma separated)"],
             ["leaveDates", "Admin leave dates (YYYY-MM-DD, comma separated)"],

@@ -1,3 +1,4 @@
+import PrescriptionEditor from "./PrescriptionEditor";
 import { useEffect, useState } from "react";
 import { Alert, App, Button, Input, Select } from "antd";
 import {
@@ -60,6 +61,7 @@ export default function Consultation() {
     dateGiven: dayKey(),
     nextDueDate: "",
   });
+  const [prescriptionPending, setPrescriptionPending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [errors, setErrors] = useState({});
@@ -96,6 +98,7 @@ export default function Consultation() {
       values.weight ||
       values.diagnosis ||
       values.prescription ||
+      prescriptionPending ||
       values.procedure !== "N/A" ||
       values.notes ||
       values.nextDueDate
@@ -111,6 +114,7 @@ export default function Consultation() {
   };
   const complete = async () => {
     const next = {
+      ...(!vaccination && prescriptionPending ? { prescription: "Add the medicine to the prescription or clear its fields before completing." } : {}),
       ...(!values.weight ? { weight: "Enter the measured weight." } : {}),
       ...(!vaccination && !values.symptoms.trim()
         ? { symptoms: "Symptoms are required." }
@@ -243,7 +247,7 @@ export default function Consultation() {
                 }
               />
             </Panel>
-            <Panel title="Pet information">
+            <Panel title="Pet information" className="consultation-patient-details">
               <Details
                 entries={[
                   ["Pet", appointment.pet?.name],
@@ -266,8 +270,8 @@ export default function Consultation() {
             </Panel>
             <VisitDetails appointment={appointment} />
             {error && <Alert type="error" message={error} />}
-            <div className="two-columns">
-              <Panel title="Clinical findings">
+            <div className="consultation-form-layout">
+              <Panel title="Clinical findings" className={`consultation-clinical${vaccination ? " consultation-vaccination" : ""}`}>
                 <Field
                   label="Weight (kg)"
                   name="weight"
@@ -364,27 +368,13 @@ export default function Consultation() {
                   </>
                 )}
               </Panel>
-              <div className="consultation-side">
+              <div className="consultation-side consultation-wide">
                 {!vaccination && (
                   <Panel title="Prescription">
-                    <Field
-                      label="Prescription"
-                      name="prescription"
-                      required
-                      errors={errors}
-                    >
-                      <Input.TextArea
-                        id="prescription"
-                        rows={4}
-                        maxLength={2000}
-                        value={values.prescription}
-                        placeholder="Medicine, dose, frequency and duration. Enter N/A if none."
-                        onChange={(e) => change("prescription", e.target.value)}
-                      />
-                    </Field>
+                    <PrescriptionEditor key={id} pet={appointment.pet} value={values.prescription} onChange={v => change("prescription", v)} errors={errors} onPendingChange={setPrescriptionPending} />
                   </Panel>
                 )}
-                <Panel title="Other notes">
+                <Panel title="Other notes" className="consultation-notes">
                   <Field label="Done to the pet" name="procedure">
                     <Select
                       id="procedure"

@@ -14,6 +14,7 @@ import "./portal.css";
 import "./marketing.css";
 import "./auth.css";
 import "./admin-overview.css";
+import "./clinic-workspace.css";
 installTokens();
 createRoot(document.getElementById("root")).render(
   <ConfigProvider theme={{ token: tokens }}>

@@ -1,3 +1,4 @@
+const { SLOT_CAPACITY, timesForDate } = require("../utils/scheduleSlots");
 const { Appointment, Pet, Service, Schedule } = require("../models");
 const {
   fail,
@@ -18,7 +19,7 @@ const lockSchedule = async (session) =>
     { $inc: { revision: 1 } },
     { new: true, session },
   );
-const slotState = async (date, time, schedule, session, excludeId) => {
+const slotState = async (date, time, schedule, session, excludeId, counts) => {
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(String(date)) ||
     !/^\d{2}:\d{2}$/.test(String(time)) ||
@@ -38,7 +39,7 @@ const slotState = async (date, time, schedule, session, excludeId) => {
     hours.closed ||
     time < hours.open ||
     time >= hours.close ||
-    !schedule.times.includes(time)
+    !timesForDate(schedule, date).includes(time)
   )
     return "Blocked";
   const filter = {
@@ -47,11 +48,11 @@ const slotState = async (date, time, schedule, session, excludeId) => {
     status: { $in: ["Pending", "Approved", "Completed"] },
     ...(excludeId ? { _id: { $ne: excludeId } } : {}),
   };
-  const [daily, slot] = await Promise.all([
+  const [daily, slot] = counts ? [counts.daily, counts.byTime.get(time) || 0] : await Promise.all([
     Appointment.countDocuments(filter).session(session || null),
     Appointment.countDocuments({ ...filter, time }).session(session || null),
   ]);
-  return daily >= schedule.dailyCapacity || slot >= schedule.capacity
+  return daily >= schedule.dailyCapacity || slot >= SLOT_CAPACITY
     ? "Full"
     : "Available";
 };
@@ -75,7 +76,7 @@ const findOpenSlot = async (date, preferredTime, session) => {
   if (!schedule) return null;
   const candidates = [
     preferredTime,
-    ...schedule.times.filter((time) => time !== preferredTime),
+    ...timesForDate(schedule, date).filter((time) => time !== preferredTime),
   ];
   for (const time of candidates)
     if ((await slotState(date, time, schedule, session)) === "Available")
@@ -94,13 +95,20 @@ const getSlots = async (req, res) => {
     excludeId = appointment._id;
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) fail(400, "Choose a valid date.");
+  // One query per day keeps the owner calendar fast with half-hour slots.
+  const bookings = await Appointment.find({
+    date, source: { $ne: "Emergency" }, status: { $in: ["Pending", "Approved", "Completed"] },
+    ...(excludeId ? { _id: { $ne: excludeId } } : {}),
+  }).select("time").lean();
+  const counts = { daily: bookings.length, byTime: new Map() };
+  for (const { time } of bookings) counts.byTime.set(time, (counts.byTime.get(time) || 0) + 1);
   const slots = await Promise.all(
-    schedule.times.map(async (time) => ({
+    timesForDate(schedule, date).map(async (time) => ({
       time,
-      status: await slotState(date, time, schedule, null, excludeId),
+      status: await slotState(date, time, schedule, null, excludeId, counts),
     })),
   );
-  res.json({ date, slots, capacity: schedule.capacity });
+  res.json({ date, slots, capacity: SLOT_CAPACITY, intervalMinutes: 30 });
 };
 const getAppointments = async (req, res) =>
   res.json(

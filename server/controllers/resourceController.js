@@ -1,3 +1,4 @@
+const { SLOT_CAPACITY, scheduleTimes } = require("../utils/scheduleSlots");
 const models = require("../models");
 const {
   fail,
@@ -35,6 +36,8 @@ const validate = (resource, data) => {
   )
     fail(400, "Only medical services are supported.");
   if (resource === "schedules") {
+    if (data.capacity !== undefined && data.capacity !== SLOT_CAPACITY)
+      fail(400, "Each 30-minute slot accepts one appointment.", { capacity: "Capacity must be 1." });
     if (
       data.times &&
       (!data.times.length ||
@@ -76,7 +79,9 @@ const controllerFor = (resource) => {
         resource === "services" && req.user.role === "OWNER"
           ? { active: true }
           : {},
-      ).sort({ createdAt: -1 }),
+      ).sort({ createdAt: -1 }).then(records => resource === "schedules"
+        ? records.map(record => ({ ...record.toObject(), capacity: SLOT_CAPACITY, times: scheduleTimes(record), intervalMinutes: 30 }))
+        : records),
     );
   const createX = async (req, res) => {
     if (resource === "schedules")
@@ -109,7 +114,11 @@ const controllerFor = (resource) => {
         const record = await getDoc(Model, req.params.id, session);
         const before = record.toObject();
         Object.assign(record, data);
-        if (resource === "schedules") record.revision += 1;
+        if (resource === "schedules") {
+          record.revision += 1;
+          record.capacity = SLOT_CAPACITY;
+          record.times = scheduleTimes(record);
+        }
         await record.save({ session });
         await audit(
           req.user,

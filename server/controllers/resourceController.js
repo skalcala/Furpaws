@@ -218,6 +218,14 @@ const getNotifications = async (req, res) =>
       .populate("owner", "name")
       .sort({ createdAt: -1 }),
   );
+const markAllNotificationsRead = async (req, res) => {
+  assertFields(req.body, []);
+  const result = await models.Notification.updateMany(
+    { owner: req.user._id, audience: req.user.role === "ADMIN" ? "ADMIN" : { $ne: "ADMIN" }, read: { $ne: true } },
+    { $set: { read: true } },
+  );
+  res.json({ updated: result.modifiedCount });
+};
 const updateNotification = async (req, res) =>
   res.json(
     await transaction(async (session) => {
@@ -299,6 +307,7 @@ module.exports = {
   getVaccinations,
   getNotifications,
   updateNotification,
+  markAllNotificationsRead,
   getAuditlogs,
   getReports,
 };

@@ -13,9 +13,7 @@ import {
   LockOutlined,
 } from "@ant-design/icons";
 import {
-  MetricCard,
   DashboardCard,
-  StatusRing,
   ReminderTiles,
   DashboardNotice,
   DashboardIcon,
@@ -142,9 +140,6 @@ export function OwnerDashboard() {
   const pending = appointments.data.filter(
     ({ status }) => status === "Pending",
   );
-  const completed = appointments.data.filter(
-    ({ status }) => status === "Completed",
-  );
   const reminders = notifications.data.filter(({ title }) =>
     /reminder/i.test(title),
   );
@@ -152,44 +147,7 @@ export function OwnerDashboard() {
   return (
     <div className="dashboard-page owner-home">
       <DashboardNotice resources={[appointments, notifications, pets]} />
-      <OwnerLanding user={user} pets={pets.data} upcoming={upcoming} />
-      <div className="dashboard-metrics">
-        <MetricCard
-          label="My Pets"
-          value={pets.data.length}
-          caption="Approved clinic records"
-          icon="pet"
-          loading={pets.loading}
-        />
-        <MetricCard
-          label="Upcoming Visits"
-          value={upcoming.length}
-          caption="Your next appointments"
-          icon="calendar"
-          loading={appointments.loading}
-        />
-        <MetricCard
-          label="Pending Requests"
-          value={pending.length}
-          caption="Awaiting clinic approval"
-          icon="clock"
-          loading={appointments.loading}
-        />
-        <MetricCard
-          label="Completed Visits"
-          value={completed.length}
-          caption="Your pets’ care history"
-          icon="check"
-          loading={appointments.loading}
-        />
-        <MetricCard
-          label="Unread Messages"
-          value={unread.length}
-          caption="Decisions and reminders"
-          icon="bell"
-          loading={notifications.loading}
-        />
-      </div>
+      <OwnerLanding user={user} />
       <div className="dashboard-content-grid">
         <DashboardCard
           eyebrow="Schedule"
@@ -242,34 +200,8 @@ export function OwnerDashboard() {
           </Link>
         </DashboardCard>
         <DashboardCard
-          eyebrow="Care overview"
-          title="My Appointment Status"
-          action={{ to: "/owner/U9" }}
-        >
-          <StatusRing
-            items={[
-              {
-                label: "Approved",
-                count: appointments.data.filter(
-                  ({ status }) => status === "Approved",
-                ).length,
-              },
-              { label: "Completed", count: completed.length },
-              { label: "Pending", count: pending.length },
-            ]}
-          />
-          <div className="dashboard-note">
-            <DashboardIcon name="record" />
-            <span>
-              Completed visit records are available in your pet’s medical
-              history.
-            </span>
-          </div>
-        </DashboardCard>
-        <DashboardCard
           eyebrow="Actions"
           title="Care Reminders"
-          className="dashboard-span-two"
         >
           <ReminderTiles
             items={[
@@ -368,7 +300,7 @@ export function OwnerProfile({ embedded = false }) {
       <div className="account-overview">
         <div className="account-cover">
           <span className="account-avatar">
-            {user.name
+            {user.profilePicture ? <img src={user.profilePicture} alt={user.name} /> : user.name
               .split(" ")
               .filter(Boolean)
               .slice(0, 2)
@@ -474,6 +406,10 @@ export function OwnerProfile({ embedded = false }) {
             </>
           ) : (
             <>
+              <Form.Item name="profilePicture">
+                <PictureUpload label="Profile photo" maxDimension={480} disabled={busy} />
+              </Form.Item>
+              <Button type="text" onClick={() => form.setFieldValue("profilePicture", "")}>Remove profile photo</Button>
               <Form.Item
                 label="Name"
                 name="name"
@@ -551,7 +487,7 @@ export function PetCards({ pets, admin = false, select, selected }) {
             picture,
             birthDate,
           }) => (
-            <Panel key={_id}>
+            <Panel key={_id} className={`pet-profile-card${selected === _id ? " is-selected" : ""}`}>
               <div className="pet-card">
                 <div className="pet-picture">
                   {picture ? (
@@ -582,7 +518,7 @@ export function PetCards({ pets, admin = false, select, selected }) {
                       className="button"
                       to={`/${admin ? "admin/A6b" : "owner/U3b"}/${_id}`}
                     >
-                      View
+                      View pet profile
                     </Link>
                   )}
                 </div>
@@ -607,16 +543,12 @@ export function MyPets() {
   const pets = useResource("/pets");
   return (
     <>
-      <PageHeading title="My Pets · Approved List" />
+      <PageHeading title="My Pets" />
       <RequestState {...pets} retry={pets.refresh}>
         {pets.data.length ? (
           <>
-            <p>{pets.data.length} approved pets associated with your account</p>
+            <div className="pets-collection-heading"><div><h2>Your companions</h2><p>{pets.data.length} {pets.data.length === 1 ? "pet" : "pets"} · Health stories, care and happy moments.</p></div><Link className="button primary" to="/owner/U4">Book a visit</Link></div>
             <PetCards pets={pets.data} />
-            <Note>
-              New pets appear only after Admin approval or after the completed
-              checkup. Register a new pet through a No record appointment.
-            </Note>
           </>
         ) : (
           <Panel className="empty-pets">
@@ -630,7 +562,6 @@ export function MyPets() {
             <Link className="button primary" to="/owner/U4">
               Book an appointment
             </Link>
-            <small>Pets cannot be added directly from this page.</small>
           </Panel>
         )}
       </RequestState>
@@ -844,8 +775,13 @@ export function MedicalRecords({ admin = false }) {
   };
   let columns = [
     { title: "Date", dataIndex: "createdAt", render: formatDate },
+    { title: "Symptoms", dataIndex: "symptoms" },
     { title: "Diagnosis", dataIndex: "diagnosis" },
-    { title: "Treatment", dataIndex: "treatment" },
+    {
+      title: "Prescription",
+      render: (_, record) => record.prescription || record.treatment,
+    },
+    { title: "Procedure", dataIndex: "procedure" },
     { title: "Admin", render: (_, { admin: clinician }) => clinician?.name },
   ];
   let rows = consultations;
@@ -863,7 +799,7 @@ export function MedicalRecords({ admin = false }) {
     columns = [
       { title: "Vaccine", dataIndex: "vaccine" },
       { title: "Date given", dataIndex: "dateGiven", render: formatDate },
-      { title: "Next due date", dataIndex: "nextDueDate", render: formatDate },
+      { title: "Next date given", dataIndex: "nextDueDate", render: formatDate },
     ];
   }
   if (tab === "Weight History") {
@@ -966,7 +902,7 @@ export function MedicalRecords({ admin = false }) {
                   data.vaccinations?.at(-1)?.vaccine || "None",
                 ],
                 [
-                  "Next due date",
+                  "Next date given",
                   formatDate(data.vaccinations?.at(-1)?.nextDueDate),
                 ],
               ]}
@@ -989,7 +925,7 @@ export function MedicalRecords({ admin = false }) {
       >
         {error && <Alert message={error} type="error" />}
         <Form form={form} layout="vertical" onFinish={save}>
-          {["diagnosis", "treatment", "notes"].map((name) => (
+          {["symptoms", "diagnosis", "prescription", "notes"].map((name) => (
             <Form.Item
               key={name}
               name={name}

@@ -11,3 +11,6 @@ server/.env
 tests
 *.log
 .DS_Store
+
+# Retained nested checkout; deploy the repaired root project.
+Furpaws

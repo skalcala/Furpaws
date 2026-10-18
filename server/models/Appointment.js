@@ -18,7 +18,7 @@ const AppointmentSchema = new mongoose.Schema(
       enum: ["Pending", "Approved", "Declined", "Completed", "Cancelled"],
       default: "Pending",
     },
-    source: { type: String, enum: ["Owner", "Emergency"], default: "Owner" },
+    source: { type: String, enum: ["Owner", "Emergency", "Clinic"], default: "Owner" },
     emergencyRequestKey: { type: String, unique: true, sparse: true },
     reasonForVisit: { ...text(false, 2000), default: "" },
     declineReason: text(false, 500),

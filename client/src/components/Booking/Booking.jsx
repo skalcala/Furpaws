@@ -16,6 +16,7 @@ import {
 } from "../../api";
 import { Details, Field, Note, Panel, Status, useResource } from "../Shared/UI";
 import { PageHeading, PetCards } from "../Owner/OwnerPages";
+import { DashboardIcon } from "../Shared/Dashboard";
 const blank = {
   bookingType: "With record",
   pet: "",
@@ -308,6 +309,7 @@ export default function Booking() {
   });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState(null); // null | "sending" | "success"
   const [error, setError] = useState("");
   const [full, setFull] = useState(false);
   const [confirmation, setConfirmation] = useState(() => {
@@ -400,8 +402,14 @@ export default function Booking() {
     }
     setBusy(true);
     setError("");
+    setPhase("sending");
+    const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     try {
-      const { data } = await api.post("/appointments", draft);
+      // Hold the "sending" animation for a moment so it never just flashes.
+      const [{ data }] = await Promise.all([
+        api.post("/appointments", draft),
+        pause(1400),
+      ]);
       const saved = {
         ...data,
         petName: pet?.name || draft.registration.name,
@@ -409,9 +417,11 @@ export default function Booking() {
       };
       setConfirmation(saved);
       sessionStorage.setItem("furpawsConfirmation", JSON.stringify(saved));
+      window.localStorage.setItem("furpaws:refresh", String(Date.now()));
+      setPhase("success");
+      await pause(1500);
       sessionStorage.removeItem("furpawsDraft");
       setDraft(blank);
-      window.localStorage.setItem("furpaws:refresh", String(Date.now()));
       go("U8");
     } catch (failure) {
       setError(errorMessage(failure));
@@ -423,6 +433,7 @@ export default function Booking() {
         setFull(true);
     } finally {
       setBusy(false);
+      setPhase(null);
     }
   };
   const titles = {
@@ -656,7 +667,7 @@ export default function Booking() {
       )}
       {step === "U8" &&
         (confirmation ? (
-          <Panel title="Appointment submitted">
+          <Panel title="Appointment submitted" className="booking-confirmed">
             <p>Your request is with the clinic.</p>
             <Status value="Pending" />
             <h2>Waiting for Admin approval</h2>
@@ -697,6 +708,36 @@ export default function Booking() {
             <Link to="/owner/U4">Book an appointment</Link>
           </Panel>
         ))}
+      {phase && (
+        <div className="booking-overlay" role="status" aria-live="polite">
+          <div
+            className={`booking-overlay-card${phase === "success" ? " is-success" : ""}`}
+          >
+            <div className="booking-orb">
+              <span className="booking-orb-ring" />
+              <span className="booking-orb-paw">
+                <DashboardIcon name="pet" />
+              </span>
+              <svg
+                className="booking-check"
+                viewBox="0 0 52 52"
+                aria-hidden="true"
+              >
+                <circle cx="26" cy="26" r="23" />
+                <path d="M15 27.5l8 8 15-17" />
+              </svg>
+            </div>
+            <strong>
+              {phase === "success" ? "Request sent!" : "Sending your request…"}
+            </strong>
+            <span>
+              {phase === "success"
+                ? "The clinic will review it shortly."
+                : "Reserving your preferred time."}
+            </span>
+          </div>
+        </div>
+      )}
       <Modal
         open={full}
         title="This slot is full"

@@ -104,7 +104,8 @@ fs.mkdirSync(output, { recursive: true });
   await page.goto(`http://127.0.0.1:3000/admin/A5/${appointment._id}`);
   await page.locator("#weight").fill("4.1");
   await page.locator("#diagnosis").fill("Routine wellness exam");
-  await page.locator("#treatment").fill("Healthy; continue balanced diet");
+  await page.locator("#symptoms").fill("Routine checkup");
+  await page.locator("#prescription").fill("N/A");
   await page.locator("#medicine").click();
   await page
     .getByText(/Carprofen 25 mg · 0 tablets/)

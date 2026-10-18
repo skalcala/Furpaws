@@ -1,15 +1,7 @@
 import NumericInput from "../Shared/NumericInput";
+import ClinicCalendar from "../Shared/ClinicCalendar";
 import { useEffect, useState } from "react";
-import {
-  Alert,
-  App,
-  Button,
-  Form,
-  Input,
-  Modal,
-  Select,
-  Switch,
-} from "antd";
+import { Alert, App, Button, Form, Input, Modal, Select, Switch } from "antd";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   api,
@@ -69,202 +61,207 @@ export function AdminDashboard() {
   );
   const resources = [appointments, pets, medicines, users, report];
   return (
-    <div className="dashboard-page">
+    <div className="dashboard-page clinic-overview">
       <DashboardNotice resources={resources} />
-      <DashboardHero
-        name={user.name}
-        summary={{
-          title: "Patient summary",
-          text: `${pets.data.length} pets in the clinic · ${pending.length} booking requests to review`,
-        }}
-        action={{ to: "/admin/A6", label: "View Pets & Owners" }}
-      />
-      <div className="dashboard-metrics">
-        <MetricCard
-          label="Total Pets"
-          value={pets.data.length}
-          caption="Registered clinic pets"
-          icon="pet"
-          loading={pets.loading}
-        />
-        <MetricCard
-          label="Today’s Appointments"
-          value={visits.length}
-          caption="Scheduled today"
-          icon="calendar"
-          loading={appointments.loading}
-        />
-        <MetricCard
-          label="Active Queue"
-          value={queue.length}
-          caption="Approved visits today"
-          icon="clock"
-          loading={appointments.loading}
-        />
-        <MetricCard
-          label="Completed Visits"
-          value={completed.length}
-          caption="Completed today"
-          icon="check"
-          loading={appointments.loading}
-        />
-        <MetricCard
-          label="Today’s Revenue"
-          value={money(report.data.revenue)}
-          caption="Collected payments"
-          icon="wallet"
-          loading={report.loading}
-        />
-      </div>
-      <div className="dashboard-content-grid">
-        <DashboardCard
-          eyebrow="Schedule"
-          title="Today’s Appointments"
-          action={{ to: "/admin/A3" }}
-        >
-          {visits.length ? (
-            <div className="dashboard-visit-list">
-              {visits
-                .slice(0, 3)
-                .map(({ _id, pet, owner, service, time, status }) => (
-                  <div className="dashboard-visit" key={_id}>
-                    <span className="visit-time">{formatTime(time)}</span>
-                    <div>
-                      <strong>
-                        {pet?.name} · {service?.name}
-                      </strong>
-                      <p>{owner?.name}</p>
-                    </div>
-                    <Status value={status} />
+      <p className="clinic-overview-title">Dashboard</p>
+      <div className="clinic-overview-frame">
+        <div className="clinic-overview-main">
+          <DashboardHero
+            name={user.name}
+            summary={{
+              title: "Patient summary",
+              text: `${pets.data.length} pets in the clinic · ${pending.length} booking requests to review`,
+            }}
+            action={{ to: "/admin/A6", label: "View Pets & Owners" }}
+          />
+          <div className="dashboard-metrics">
+            <MetricCard
+              label="Total Pets"
+              value={pets.data.length}
+              caption="Registered clinic pets"
+              icon="pet"
+              loading={pets.loading}
+            />
+            <MetricCard
+              label="Today’s Appointments"
+              value={visits.length}
+              caption="Scheduled today"
+              icon="calendar"
+              loading={appointments.loading}
+            />
+            <MetricCard
+              label="Active Queue"
+              value={queue.length}
+              caption="Approved visits today"
+              icon="clock"
+              loading={appointments.loading}
+            />
+            <MetricCard
+              label="Completed Visits"
+              value={completed.length}
+              caption="Completed today"
+              icon="check"
+              loading={appointments.loading}
+            />
+            <MetricCard
+              label="Today’s Revenue"
+              value={money(report.data.revenue)}
+              caption="Collected payments"
+              icon="wallet"
+              loading={report.loading}
+            />
+          </div>
+          <DashboardCard eyebrow="Shortcuts" title="Quick Links">
+            <ShortcutGrid
+              items={[
+                { label: "Pets & Owners", to: "/admin/A6", icon: "pet" },
+                { label: "Appointments", to: "/admin/A3", icon: "calendar" },
+                { label: "Vaccinations", to: "/admin/A7", icon: "record" },
+                { label: "Medicines", to: "/admin/A8", icon: "pill" },
+                { label: "Consultations", to: "/admin/A5", icon: "check" },
+                { label: "Reports", to: "/admin/A12", icon: "report" },
+              ]}
+            />
+          </DashboardCard>
+          <div className="clinic-overview-details">
+            <DashboardCard
+              eyebrow="Live"
+              title="Patient Queue Status"
+              action={{ to: "/admin/A4" }}
+            >
+              <StatusRing
+                items={[
+                  { label: "Approved queue", count: queue.length },
+                  { label: "Completed", count: completed.length },
+                  {
+                    label: "Pending today",
+                    count: visits.filter(({ status }) => status === "Pending")
+                      .length,
+                  },
+                ]}
+              />
+              <div className="dashboard-financials">
+                {[
+                  ["Revenue", report.data.revenue],
+                  ["Expenses", report.data.expenses],
+                  ["Net", report.data.netIncome],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <span>{label}</span>
+                    <strong>{report.loading ? "—" : money(value)}</strong>
                   </div>
                 ))}
-            </div>
-          ) : (
-            <div className="dashboard-empty">
-              <span className="dashboard-icon">
-                <DashboardIcon name="calendar" />
-              </span>
-              <p>No appointments scheduled for today.</p>
-            </div>
-          )}
-          <Link className="button dashboard-wide-button" to="/admin/A3">
-            View Full Schedule
-          </Link>
-        </DashboardCard>
-        <DashboardCard eyebrow="Shortcuts" title="Quick Links">
-          <ShortcutGrid
-            items={[
-              { label: "Pets & Owners", to: "/admin/A6", icon: "pet" },
-              { label: "Appointments", to: "/admin/A3", icon: "calendar" },
-              {
-                label: "Follow-up Checkups",
-                to: "/admin/A5?tab=followups",
-                icon: "record",
-              },
-              { label: "Medicines", to: "/admin/A8", icon: "pill" },
-              { label: "Consultations", to: "/admin/A5", icon: "check" },
-              { label: "Reports", to: "/admin/A12", icon: "report" },
-            ]}
-          />
-        </DashboardCard>
-        <DashboardCard
-          eyebrow="Live"
-          title="Patient Queue Status"
-          action={{ to: "/admin/A4" }}
-        >
-          <StatusRing
-            items={[
-              { label: "Approved queue", count: queue.length },
-              { label: "Completed", count: completed.length },
-              {
-                label: "Pending today",
-                count: visits.filter(({ status }) => status === "Pending")
-                  .length,
-              },
-            ]}
-          />
-          <div className="dashboard-financials">
-            {[
-              ["Revenue", report.data.revenue],
-              ["Expenses", report.data.expenses],
-              ["Net", report.data.netIncome],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <span>{label}</span>
-                <strong>{report.loading ? "—" : money(value)}</strong>
               </div>
-            ))}
+            </DashboardCard>
+            <DashboardCard eyebrow="Overview" title="Clinic Snapshot">
+              <SnapshotRows
+                items={[
+                  {
+                    title: `${users.data.length} owners`,
+                    text: "In the clinic database",
+                    icon: "profile",
+                  },
+                  {
+                    title: `${pets.data.length} pets`,
+                    text: "Registered with the clinic",
+                    icon: "pet",
+                  },
+                  {
+                    title: `${pending.length} pending bookings`,
+                    text: `${newPets.length} pets awaiting approval`,
+                    icon: "calendar",
+                  },
+                  {
+                    title: `${appointments.data.length} total appointments`,
+                    text: "Across all appointment records",
+                    icon: "record",
+                  },
+                ]}
+              />
+            </DashboardCard>
           </div>
-        </DashboardCard>
-        <DashboardCard eyebrow="Overview" title="Clinic Snapshot">
-          <SnapshotRows
-            items={[
-              {
-                title: `${users.data.length} owners`,
-                text: "In the clinic database",
-                icon: "profile",
-              },
-              {
-                title: `${pets.data.length} pets`,
-                text: "Registered with the clinic",
-                icon: "pet",
-              },
-              {
-                title: `${pending.length} pending bookings`,
-                text: `${newPets.length} pets awaiting approval`,
-                icon: "calendar",
-              },
-              {
-                title: `${appointments.data.length} total appointments`,
-                text: "Across all appointment records",
-                icon: "record",
-              },
-            ]}
-          />
-        </DashboardCard>
-        <DashboardCard
-          eyebrow="Actions"
-          title="Smart Reminders"
-          className="dashboard-span-two"
+        </div>
+        <div
+          className="clinic-overview-rail"
+          role="complementary"
+          aria-label="Clinic activity"
         >
-          <ReminderTiles
-            items={[
-              {
-                title: "Review booking requests",
-                text: `${pending.length} requests awaiting a decision`,
-                icon: "calendar",
-                to: "/admin/A2",
-                action: "Review",
-              },
-              {
-                title: "Check medicine stock",
-                text: `${lowStock.length} medicines at or below stock threshold`,
-                icon: "pill",
-                to: "/admin/A8",
-                action: "View",
-              },
-              {
-                title: "Review medicine expiry",
-                text: `${expiry.length} medicines near expiry or expired`,
-                icon: "clock",
-                to: "/admin/A8",
-                action: "Open",
-              },
-            ]}
-          />
-          <div className="dashboard-note">
-            <DashboardIcon name="bell" />
-            <span>
-              Keep approvals and inventory up to date before the next clinic
-              visit.
-            </span>
-            <Link to="/admin/A14">Notification log →</Link>
-          </div>
-        </DashboardCard>
+          <ClinicCalendar appointments={appointments.data} />
+          <DashboardCard
+            eyebrow="Schedule"
+            title="Today’s Appointments"
+            action={{ to: "/admin/A3" }}
+          >
+            {visits.length ? (
+              <div className="dashboard-visit-list">
+                {visits
+                  .slice(0, 3)
+                  .map(({ _id, pet, owner, service, time, status }) => (
+                    <div className="dashboard-visit" key={_id}>
+                      <span className="visit-time">{formatTime(time)}</span>
+                      <div>
+                        <strong>
+                          {pet?.name} · {service?.name}
+                        </strong>
+                        <p>{owner?.name}</p>
+                      </div>
+                      <Status value={status} />
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="dashboard-empty">
+                <span className="dashboard-icon">
+                  <DashboardIcon name="calendar" />
+                </span>
+                <p>No appointments scheduled for today.</p>
+              </div>
+            )}
+            <Link className="button dashboard-wide-button" to="/admin/A3">
+              View Full Schedule
+            </Link>
+          </DashboardCard>
+          <DashboardCard eyebrow="Actions" title="Smart Reminders">
+            <ReminderTiles
+              items={[
+                {
+                  title: "Review booking requests",
+                  text: `${pending.length} requests awaiting a decision`,
+                  icon: "calendar",
+                  to: "/admin/A2",
+                  action: "Review",
+                },
+                {
+                  title: "Check medicine stock",
+                  text: `${lowStock.length} medicines at or below stock threshold`,
+                  icon: "pill",
+                  to: "/admin/A8",
+                  action: "View",
+                },
+                {
+                  title: "Review medicine expiry",
+                  text: `${expiry.length} medicines near expiry or expired`,
+                  icon: "clock",
+                  to: "/admin/A8",
+                  action: "Open",
+                },
+              ]}
+            />
+            <div className="dashboard-note">
+              <DashboardIcon name="bell" />
+              <span>
+                Keep approvals and inventory up to date before the next clinic
+                visit.
+              </span>
+              <Link to="/admin/A14">Notification log →</Link>
+            </div>
+          </DashboardCard>
+        </div>
       </div>
     </div>
   );
 }
+
 export function Owners() {
   const users = useResource("/users");
   const pets = useResource("/pets");
@@ -868,7 +865,7 @@ export function Vaccinations() {
     { title: "Owner", render: (_, { owner }) => owner?.name },
     { title: "Vaccine", dataIndex: "vaccine" },
     { title: "Date given", dataIndex: "dateGiven", render: formatDate },
-    { title: "Next due date", dataIndex: "nextDueDate", render: formatDate },
+    { title: "Next date given", dataIndex: "nextDueDate", render: formatDate },
     {
       title: "Action",
       render: (_, { pet }) => (
@@ -898,20 +895,19 @@ export function Vaccinations() {
     <>
       <PageHeading title="Vaccinations" />
       <RequestState {...records} retry={records.refresh}>
-        <Panel title="Per-pet vaccination records">
-          <DataTable data={records.data} columns={columns} />
-        </Panel>
-        <Panel title="Coming due">
+        <Panel title="Upcoming due">
           <DataTable
-            data={records.data.filter(
-              ({ nextDueDate }) =>
-                new Date(nextDueDate) <= new Date(Date.now() + 30 * 86400000),
+            data={[...records.data].sort(
+              (a, b) => new Date(a.nextDueDate) - new Date(b.nextDueDate),
             )}
             columns={columns}
           />
         </Panel>
       </RequestState>
-      <Note>Next due dates feed owner vaccination reminders.</Note>
+      <Note>
+        Completing a vaccination visit books the next due date for the owner and
+        sends them a notification.
+      </Note>
       <Modal
         open={!!editing}
         title="Edit vaccination record"
@@ -941,7 +937,7 @@ export function Vaccinations() {
           </Form.Item>
           <Form.Item
             name="nextDueDate"
-            label="Next due date"
+            label="Next date given"
             dependencies={["dateGiven"]}
             rules={[
               { required: true },
@@ -950,7 +946,7 @@ export function Vaccinations() {
                   value > getFieldValue("dateGiven")
                     ? Promise.resolve()
                     : Promise.reject(
-                        new Error("Next due date must follow date given."),
+                        new Error("Next date given must follow date given."),
                       ),
               }),
             ]}

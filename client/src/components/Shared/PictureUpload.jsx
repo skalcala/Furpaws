@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { Alert } from "antd";
-export async function readPetPicture(file) {
+export async function readPetPicture(file, maxDimension = 1400) {
   if (!file) return "";
   if (file.size > 15 * 1024 * 1024)
     throw new Error("Choose a photo smaller than 15 MB.");
@@ -24,7 +24,7 @@ export async function readPetPicture(file) {
     });
     const scale = Math.min(
       1,
-      1400 / Math.max(img.naturalWidth, img.naturalHeight),
+      maxDimension / Math.max(img.naturalWidth, img.naturalHeight),
     );
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
@@ -39,7 +39,7 @@ export async function readPetPicture(file) {
     URL.revokeObjectURL(url);
   }
 }
-export default function PictureUpload({ value, onChange, disabled = false }) {
+export default function PictureUpload({ value, onChange, disabled = false, label = "Pet photo", maxDimension = 1400 }) {
   const id = useId();
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
@@ -49,7 +49,7 @@ export default function PictureUpload({ value, onChange, disabled = false }) {
     setWorking(true);
     setError("");
     try {
-      await onChange(await readPetPicture(file));
+      await onChange(await readPetPicture(file, maxDimension));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -59,15 +59,15 @@ export default function PictureUpload({ value, onChange, disabled = false }) {
   };
   return (
     <div className="pet-photo-upload">
-      <label htmlFor={id}>Pet photo</label>
+      <label htmlFor={id}>{label}</label>
       {value && (
-        <img src={value} alt="Selected pet" className="pet-photo-preview" />
+        <img src={value} alt={`Selected ${label.toLowerCase()}`} className="pet-photo-preview" />
       )}
       <input
         id={id}
         type="file"
         accept="image/*"
-        aria-label="Choose pet photo"
+        aria-label={`Choose ${label.toLowerCase()}`}
         onChange={upload}
         disabled={disabled || working}
       />

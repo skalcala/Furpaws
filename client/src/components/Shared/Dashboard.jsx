@@ -75,6 +75,9 @@ export function DashboardHero({ name, owner = false, summary, action }) {
             {owner ? "Every visit, in one place" : "Patient care dashboard"}
           </span>
         </div>
+        <span className="clinic-hero-mark" aria-hidden="true">
+          <DashboardIcon name="pet" />
+        </span>
       </div>
       <div className="hero-assistant">
         <div className="row spread">

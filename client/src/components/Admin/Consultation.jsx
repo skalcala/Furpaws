@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, App, Button, Input, Select, Switch } from "antd";
+import { Alert, App, Button, Input, Select } from "antd";
 import {
   Link,
   useNavigate,
@@ -11,12 +11,14 @@ import {
   dayKey,
   errorMessage,
   formatDate,
+  formatPetAge,
   formatTime,
   money,
   shortId,
 } from "../../api";
 import {
   DataTable,
+  Details,
   Field,
   Note,
   Panel,
@@ -28,6 +30,17 @@ import NumericInput from "../Shared/NumericInput";
 import VisitDetails from "../Shared/VisitDetails";
 import { PageHeading } from "../Owner/OwnerPages";
 import EmergencyConsultation from "./EmergencyConsultation";
+const PROCEDURES = [
+  "N/A",
+  "Physical examination",
+  "Wound cleaning / dressing",
+  "Injection / IV fluids",
+  "Deworming",
+  "Laboratory test",
+  "X-ray / ultrasound",
+  "Minor surgery",
+  "Other",
+];
 export default function Consultation() {
   const { id } = useParams();
   const [params] = useSearchParams();
@@ -38,16 +51,14 @@ export default function Consultation() {
   const [emergency, setEmergency] = useState(false);
   const [values, setValues] = useState({
     weight: null,
+    symptoms: "",
     diagnosis: "",
-    treatment: "",
+    prescription: "",
+    procedure: "N/A",
     notes: "",
     vaccine: "Rabies",
     dateGiven: dayKey(),
     nextDueDate: "",
-    followUpEnabled: false,
-    followUpDate: "",
-    followUpPurpose: "",
-    followUpInstructions: "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -56,22 +67,26 @@ export default function Consultation() {
   useEffect(() => {
     setValues({
       weight: null,
+      symptoms: "",
       diagnosis: "",
-      treatment: "",
+      prescription: "",
+      procedure: "N/A",
       notes: "",
       vaccine: "Rabies",
       dateGiven: dayKey(),
       nextDueDate: "",
-      followUpEnabled: false,
-      followUpDate: "",
-      followUpPurpose: "",
-      followUpInstructions: "",
     });
     setError("");
     setErrors({});
     if (id) refreshAppointments();
   }, [id, refreshAppointments]);
   const appointment = appointments.data.find((a) => a._id === id);
+  // Pet details come from the approved booking; the owner's explanation pre-fills symptoms.
+  const bookedSymptoms = appointment?.reasonForVisit || "";
+  useEffect(() => {
+    if (bookedSymptoms)
+      setValues((v) => (v.symptoms ? v : { ...v, symptoms: bookedSymptoms }));
+  }, [bookedSymptoms]);
   const vaccination = appointment?.service?.type === "Vaccination";
   const change = (key, value) => setValues((v) => ({ ...v, [key]: value }));
   const leave = () => {
@@ -80,10 +95,10 @@ export default function Consultation() {
     if (
       values.weight ||
       values.diagnosis ||
-      values.treatment ||
+      values.prescription ||
+      values.procedure !== "N/A" ||
       values.notes ||
-      values.nextDueDate ||
-      values.followUpEnabled
+      values.nextDueDate
     )
       modal.confirm({
         title: "Leave this consultation?",
@@ -97,22 +112,18 @@ export default function Consultation() {
   const complete = async () => {
     const next = {
       ...(!values.weight ? { weight: "Enter the measured weight." } : {}),
+      ...(!vaccination && !values.symptoms.trim()
+        ? { symptoms: "Symptoms are required." }
+        : {}),
       ...(!vaccination && !values.diagnosis.trim()
         ? { diagnosis: "Diagnosis is required." }
         : {}),
-      ...(!vaccination && !values.treatment.trim()
-        ? { treatment: "Treatment is required." }
+      ...(!vaccination && !values.prescription.trim()
+        ? { prescription: "Enter the prescription, or N/A if none." }
         : {}),
       ...(vaccination &&
       (!values.nextDueDate || values.nextDueDate <= values.dateGiven)
         ? { nextDueDate: "Choose a later next due date." }
-        : {}),
-      ...(values.followUpEnabled &&
-      (!values.followUpDate || values.followUpDate < dayKey())
-        ? { followUpDate: "Choose today or a later date." }
-        : {}),
-      ...(values.followUpEnabled && !values.followUpPurpose.trim()
-        ? { followUpPurpose: "Enter the purpose of the follow-up." }
         : {}),
     };
     setErrors(next);
@@ -123,19 +134,11 @@ export default function Consultation() {
       const { data } = await api.post("/consultations/complete", {
         appointment: id,
         weight: values.weight,
+        symptoms: vaccination ? "" : values.symptoms,
         diagnosis: vaccination ? "" : values.diagnosis,
-        treatment: vaccination ? "" : values.treatment,
+        prescription: vaccination ? "" : values.prescription,
+        procedure: values.procedure,
         notes: values.notes,
-        followUp: {
-          enabled: values.followUpEnabled,
-          ...(values.followUpEnabled
-            ? {
-                date: values.followUpDate,
-                purpose: values.followUpPurpose,
-                instructions: values.followUpInstructions,
-              }
-            : {}),
-        },
         ...(vaccination
           ? {
               vaccination: {
@@ -147,7 +150,9 @@ export default function Consultation() {
           : {}),
       });
       message.success(
-        `Visit completed. Bill ${money(data.bill.total)} created.`,
+        data.nextAppointment
+          ? `Visit completed. Bill ${money(data.bill.total)} created. Next vaccination booked for ${formatDate(data.nextAppointment.date)}, ${formatTime(data.nextAppointment.time)}; the owner was notified.`
+          : `Visit completed. Bill ${money(data.bill.total)} created.`,
       );
       navigate("/admin/A11");
     } catch (e) {
@@ -157,76 +162,49 @@ export default function Consultation() {
       setBusy(false);
     }
   };
-  const followRows = history.data
-    .filter((r) => r.followUp?.enabled)
-    .map((r) => ({ ...r, ...r.followUp }));
-  const followTable = (
-    <Panel title="Follow-up checkups">
-      <DataTable
-        data={followRows}
-        columns={[
-          { title: "Pet", render: (_, r) => r.pet?.name },
-          { title: "Suggested date", dataIndex: "date", render: formatDate },
-          { title: "Purpose", dataIndex: "purpose" },
-          { title: "Care instructions", dataIndex: "instructions" },
-          { title: "Admin", render: (_, r) => r.admin?.name },
-          {
-            title: "Record",
-            render: (_, r) => (
-              <Link className="button" to={`/admin/A6c/${r.pet?._id}`}>
-                View medical record
-              </Link>
-            ),
-          },
-        ]}
-      />
+  const recordsTable = (
+    <Panel title="Consultation records">
+      <RequestState {...history} retry={history.refresh}>
+        <DataTable
+          data={history.data}
+          columns={[
+            { title: "Date", dataIndex: "createdAt", render: formatDate },
+            { title: "Pet", render: (_, r) => r.pet?.name },
+            { title: "Symptoms", dataIndex: "symptoms" },
+            { title: "Diagnosis", dataIndex: "diagnosis" },
+            {
+              title: "Prescription",
+              render: (_, r) => r.prescription || r.treatment,
+            },
+            { title: "Procedure", dataIndex: "procedure" },
+            { title: "Admin", render: (_, r) => r.admin?.name },
+            {
+              title: "Record",
+              render: (_, r) => (
+                <Link className="button" to={`/admin/A6c/${r.pet?._id}`}>
+                  View medical record
+                </Link>
+              ),
+            },
+          ]}
+        />
+      </RequestState>
       <Note>
-        A follow-up plan is a recommendation. The owner still books an available
-        appointment; no slot is reserved by this form.
+        Start a consultation from <Link to="/admin/A4">Today’s Queue</Link>{" "}
+        once the booking is approved.
       </Note>
     </Panel>
   );
   if (!id)
     return (
       <>
-        <PageHeading
-          title={params.get("tab") ? "Follow-up Checkups" : "Consultations"}
-        />
+        <PageHeading title="Consultations" />
         <div className="row end">
           <Button type="primary" onClick={() => setEmergency(true)}>
             Emergency consultation
           </Button>
         </div>
-        {!params.get("tab") && (
-          <Panel title="Approved visits">
-            <RequestState {...appointments} retry={appointments.refresh}>
-              <DataTable
-                data={appointments.data.filter((a) => a.status === "Approved")}
-                columns={[
-                  { title: "Pet", render: (_, r) => r.pet?.name },
-                  { title: "Owner", render: (_, r) => r.owner?.name },
-                  {
-                    title: "Service",
-                    render: (_, r) =>
-                      r.source === "Emergency"
-                        ? "Emergency consultation"
-                        : r.service?.name,
-                  },
-                  { title: "Date", dataIndex: "date", render: formatDate },
-                  {
-                    title: "Action",
-                    render: (_, r) => (
-                      <Link className="button" to={`/admin/A5/${r._id}`}>
-                        Start Consultation
-                      </Link>
-                    ),
-                  },
-                ]}
-              />
-            </RequestState>
-          </Panel>
-        )}
-        {followTable}
+        {recordsTable}
         {emergency && (
           <EmergencyConsultation open onClose={() => setEmergency(false)} />
         )}
@@ -265,6 +243,27 @@ export default function Consultation() {
                 }
               />
             </Panel>
+            <Panel title="Pet information">
+              <Details
+                entries={[
+                  ["Pet", appointment.pet?.name],
+                  [
+                    "Species / breed",
+                    `${appointment.pet?.species === "Other" ? appointment.pet?.otherSpecies || "Other" : appointment.pet?.species} · ${appointment.pet?.breed}`,
+                  ],
+                  ["Age", formatPetAge(appointment.pet || {})],
+                  [
+                    "Last recorded weight",
+                    appointment.pet?.weight
+                      ? `${appointment.pet.weight} kg`
+                      : "—",
+                  ],
+                  ["Owner", appointment.owner?.name],
+                  ["Contact", appointment.owner?.phone || appointment.owner?.email],
+                  ["Service", appointment.service?.name],
+                ]}
+              />
+            </Panel>
             <VisitDetails appointment={appointment} />
             {error && <Alert type="error" message={error} />}
             <div className="two-columns">
@@ -287,6 +286,21 @@ export default function Consultation() {
                 {!vaccination && (
                   <>
                     <Field
+                      label="Symptoms"
+                      name="symptoms"
+                      required
+                      errors={errors}
+                    >
+                      <Input.TextArea
+                        id="symptoms"
+                        rows={3}
+                        maxLength={2000}
+                        value={values.symptoms}
+                        placeholder="What the owner reported and what you observed."
+                        onChange={(e) => change("symptoms", e.target.value)}
+                      />
+                    </Field>
+                    <Field
                       label="Diagnosis"
                       name="diagnosis"
                       required
@@ -299,21 +313,6 @@ export default function Consultation() {
                         value={values.diagnosis}
                         placeholder="Describe examination findings and the clinical assessment."
                         onChange={(e) => change("diagnosis", e.target.value)}
-                      />
-                    </Field>
-                    <Field
-                      label="Treatment"
-                      name="treatment"
-                      required
-                      errors={errors}
-                    >
-                      <Input.TextArea
-                        id="treatment"
-                        rows={3}
-                        maxLength={2000}
-                        value={values.treatment}
-                        placeholder="Record treatment provided, home care, and monitoring instructions."
-                        onChange={(e) => change("treatment", e.target.value)}
                       />
                     </Field>
                   </>
@@ -342,7 +341,7 @@ export default function Consultation() {
                         />
                       </Field>
                       <Field
-                        label="Next due date"
+                        label="Next date given"
                         name="nextDueDate"
                         required
                         errors={errors}
@@ -356,94 +355,61 @@ export default function Consultation() {
                             change("nextDueDate", e.target.value)
                           }
                         />
+                        <small className="muted">
+                          The owner is notified and the next visit is booked
+                          automatically.
+                        </small>
                       </Field>
                     </div>
                   </>
                 )}
-                <Field label="Admin notes" name="notes">
-                  <Input.TextArea
-                    id="notes"
-                    rows={3}
-                    maxLength={2000}
-                    value={values.notes}
-                    placeholder="Record observations, owner instructions, precautions, and when to return."
-                    onChange={(e) => change("notes", e.target.value)}
-                  />
-                </Field>
               </Panel>
-              <Panel title="Follow-up plan (optional)">
-                <div className="row spread">
-                  <label htmlFor="followUpEnabled">
-                    Recommend a follow-up checkup
-                  </label>
-                  <Switch
-                    id="followUpEnabled"
-                    checked={values.followUpEnabled}
-                    onChange={(v) => change("followUpEnabled", v)}
-                  />
-                </div>
-                {values.followUpEnabled ? (
-                  <>
+              <div className="consultation-side">
+                {!vaccination && (
+                  <Panel title="Prescription">
                     <Field
-                      label="Suggested checkup date"
-                      name="followUpDate"
-                      required
-                      errors={errors}
-                    >
-                      <Input
-                        id="followUpDate"
-                        type="date"
-                        min={dayKey()}
-                        value={values.followUpDate}
-                        onChange={(e) => change("followUpDate", e.target.value)}
-                      />
-                    </Field>
-                    <Field
-                      label="Follow-up purpose"
-                      name="followUpPurpose"
+                      label="Prescription"
+                      name="prescription"
                       required
                       errors={errors}
                     >
                       <Input.TextArea
-                        id="followUpPurpose"
-                        rows={3}
-                        maxLength={2000}
-                        placeholder="Example: reassess healing, appetite, or response to treatment."
-                        value={values.followUpPurpose}
-                        onChange={(e) =>
-                          change("followUpPurpose", e.target.value)
-                        }
-                      />
-                    </Field>
-                    <Field
-                      label="Care instructions (optional)"
-                      name="followUpInstructions"
-                    >
-                      <Input.TextArea
-                        id="followUpInstructions"
+                        id="prescription"
                         rows={4}
                         maxLength={2000}
-                        placeholder="What should the owner monitor or bring to the next checkup?"
-                        value={values.followUpInstructions}
-                        onChange={(e) =>
-                          change("followUpInstructions", e.target.value)
-                        }
+                        value={values.prescription}
+                        placeholder="Medicine, dose, frequency and duration. Enter N/A if none."
+                        onChange={(e) => change("prescription", e.target.value)}
                       />
                     </Field>
-                    <Note>
-                      Saving this plan does not create an appointment. The owner
-                      must choose an available date and time.
-                    </Note>
-                  </>
-                ) : (
-                  <p className="muted">
-                    Turn this on only when another checkup is recommended. This
-                    visit can be completed without a follow-up plan.
-                  </p>
+                  </Panel>
                 )}
-              </Panel>
+                <Panel title="Other notes">
+                  <Field label="Done to the pet" name="procedure">
+                    <Select
+                      id="procedure"
+                      value={values.procedure}
+                      onChange={(v) => change("procedure", v)}
+                      options={PROCEDURES.map((value) => ({
+                        value,
+                        label: value,
+                      }))}
+                    />
+                  </Field>
+                  <Field label="Notes" name="notes">
+                    <Input.TextArea
+                      id="notes"
+                      rows={3}
+                      maxLength={2000}
+                      value={values.notes}
+                      placeholder="Additional details, owner instructions and precautions. Type N/A if none."
+                      onChange={(e) => change("notes", e.target.value)}
+                    />
+                  </Field>
+                </Panel>
+              </div>
             </div>
-            <div className="row">
+            <div className="row form-actions">
               <Button disabled={busy} onClick={leave}>
                 Back · Leave consultation
               </Button>
@@ -452,8 +418,9 @@ export default function Consultation() {
               </Button>
             </div>
             <Note>
-              Completion saves the clinical record and measured weight, creates
-              the service bill, and records any optional follow-up plan.
+              Completion saves the clinical record and measured weight and
+              creates the service bill. For vaccinations it also books the next
+              due date and notifies the owner.
             </Note>
           </>
         )}

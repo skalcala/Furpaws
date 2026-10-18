@@ -371,7 +371,7 @@
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 0.7fr 1.5fr 1fr;
+  grid-template-columns: 1fr 1.5fr 0.7fr;
   align-items: center;
   gap: var(--space-panel);
   background: var(--colorBlush);
@@ -760,7 +760,7 @@
     padding: var(--size48) 0;
   }
   .public-booking-banner {
-    grid-template-columns: 1.3fr 1fr;
+    grid-template-columns: 1fr 1.3fr;
   }
   .public-banner-sketch {
     display: none;
@@ -1021,3 +1021,13 @@
   text-decoration: underline;
   text-underline-offset: var(--size2);
 }
+
+/* A single care story with alternating photo positions. */
+#care { scroll-margin-top: 100px; }
+#care .public-services-grid { margin-top: 64px; }
+.public-about-image, .public-care-collage { min-width: 0; }
+.public-footer .public-eyebrow + p { max-width: 240px; line-height: 1.6; }
+@media (max-width: 700px) { #care .public-services-grid { margin-top: 40px; } }
+.is-compact .notification-card { padding: 0; }
+.is-compact .notification-open { padding: 14px; }
+.is-compact .notification-open p { font-size: 12px; line-height: 1.6; color: var(--colorTextSecondary); }

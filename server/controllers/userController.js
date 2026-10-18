@@ -23,6 +23,7 @@ const safeUser = (user) => ({
   email: user.accountType === "guest" ? "" : user.email,
   phone: user.phone,
   address: user.address,
+  profilePicture: user.profilePicture || "",
   role: user.role,
   phoneVerified: !!user.phoneVerified,
   accountType: user.accountType || "registered",
@@ -112,8 +113,14 @@ const updateUser = async (req, res) =>
         "phone",
         "address",
         "phoneVerificationTicket",
+        "profilePicture",
       ]);
       const before = req.user.toObject();
+      if (req.body.profilePicture !== undefined &&
+          (typeof req.body.profilePicture !== "string" ||
+           req.body.profilePicture.length > 400000 ||
+           (req.body.profilePicture && !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(req.body.profilePicture))))
+        fail(400, "Choose a valid profile photo smaller than 400 KB.", { profilePicture: "Use a JPG, PNG or WebP photo." });
       if (
         req.body.phone &&
         normalizePhone(req.body.phone) !== normalizePhone(req.user.phone)
@@ -148,7 +155,7 @@ const updateUser = async (req, res) =>
         req.user.phoneVerified = true;
       Object.assign(
         req.user,
-        pick(req.body, ["name", "email", "phone", "address"]),
+        pick(req.body, ["name", "email", "phone", "address", "profilePicture"]),
       );
       await req.user.save({ session });
       await audit(
@@ -156,8 +163,8 @@ const updateUser = async (req, res) =>
         "Edit",
         "users",
         req.user._id,
-        before,
-        safeUser(req.user),
+        { ...before, profilePicture: undefined },
+        { ...safeUser(req.user), profilePicture: undefined },
         session,
       );
       return safeUser(req.user);

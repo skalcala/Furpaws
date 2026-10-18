@@ -75,6 +75,7 @@ router.get("/notifications", async (req, res, next) => {
     next(error);
   }
 });
+router.patch("/notifications/read-all", resources.markAllNotificationsRead);
 router.patch("/notifications/:id", resources.updateNotification);
 router.get("/auditlogs", role("ADMIN"), resources.getAuditlogs);
 router.get("/reports", role("ADMIN"), resources.getReports);

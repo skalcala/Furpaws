@@ -7,6 +7,7 @@ const PetSchema = new mongoose.Schema(
     name: text(true, 80),
     species: { type: String, enum: ["Dog", "Cat", "Other"], required: true },
     otherSpecies: text(false, 80),
+    gender: { type: String, enum: ["Male", "Female", "Unknown"], default: "Unknown" },
     breed: text(true, 80),
     birthDate: {
       type: Date,

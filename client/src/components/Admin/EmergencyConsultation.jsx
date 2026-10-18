@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Button, Form, Input, Modal, Radio, Select } from "antd";
 import { useNavigate } from "react-router-dom";
-import { api, dayKey, errorMessage } from "../../api";
+import { api, dayKey, errorMessage, formatPetGender } from "../../api";
 import { useResource } from "../Shared/UI";
 import PetRegistrationFields from "../Shared/PetRegistrationFields";
 export default function EmergencyConsultation({ open, onClose }) {
@@ -31,6 +31,7 @@ export default function EmergencyConsultation({ open, onClose }) {
                 name: values.name,
                 species: values.species,
                 breed: values.breed,
+                gender: values.gender,
                 otherSpecies: values.otherSpecies,
                 birthDate: values.birthDate,
               },
@@ -88,7 +89,7 @@ export default function EmergencyConsultation({ open, onClose }) {
         form={form}
         layout="vertical"
         onFinish={save}
-        initialValues={{ mode: "existing", contactMode: "new", species: "Dog" }}
+        initialValues={{ mode: "existing", contactMode: "new", species: "Dog", gender: "Unknown" }}
         onValuesChange={(changed) => {
           if (changed.species)
             form.setFieldsValue({ breed: undefined, otherSpecies: "" });
@@ -114,7 +115,7 @@ export default function EmergencyConsultation({ open, onClose }) {
               loading={pets.loading}
               options={pets.data.map((p) => ({
                 value: p._id,
-                label: `${p.name} · ${p.owner?.name || "Owner"} · ${p.breed}`,
+                label: `${p.name} · ${p.owner?.name || "Owner"} · ${p.breed} · ${formatPetGender(p)}`,
               }))}
             />
           </Form.Item>

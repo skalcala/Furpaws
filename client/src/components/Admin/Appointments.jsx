@@ -11,6 +11,7 @@ import {
   formatTime,
   formatPetWeight,
   formatSpecies,
+  formatPetGender,
 } from "../../api";
 import {
   DataTable,
@@ -213,6 +214,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
               ["Pet name", current.pet?.name],
               ["Species", current.pet ? formatSpecies(current.pet) : "—"],
               ["Breed", current.pet?.breed],
+              ["Gender", formatPetGender(current.pet)],
               ["Date of birth", formatDate(current.pet?.birthDate)],
               ["Current / estimated weight", current.pet ? formatPetWeight(current.pet) : "—"],
             ]}

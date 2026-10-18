@@ -51,8 +51,9 @@ const updatePet = async (req, res) => {
       const keys =
         req.user.role === "OWNER"
           ? ["picture"]
-          : ["name", "species", "otherSpecies", "breed", "birthDate", "picture"];
+          : ["name", "species", "otherSpecies", "breed", "gender", "birthDate", "picture"];
       assertFields(req.body, keys);
+      require("../utils/petOptions").validatePetGender(req.body.gender);
       if (req.body.birthDate && new Date(req.body.birthDate) > new Date())
         fail(400, "Birth date cannot be in the future.", {
           birthDate: "Choose a past date.",

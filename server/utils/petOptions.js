@@ -26,7 +26,12 @@ async function getBreeds(species) {
   cache.set(species, { result, expires: Date.now() + (source.includes('fallback') ? 60000 : 86400000) });
   return result;
 }
+function validatePetGender(gender) {
+  if (gender !== undefined && !['Male', 'Female', 'Unknown'].includes(gender))
+    fail(400, 'Choose Male, Female, or Unknown for the pet gender.', { gender: 'Choose a valid pet gender.' });
+}
 async function validatePetRegistration(data) {
+  validatePetGender(data.gender);
   if (!['Dog', 'Cat', 'Other'].includes(data.species)) fail(400, 'Choose Dog, Cat, or Other.', { species: 'Choose a valid species.' });
   if (data.species === 'Other') {
     if (typeof data.otherSpecies !== 'string' || !data.otherSpecies.trim() || data.otherSpecies.trim().length > 80)
@@ -43,4 +48,4 @@ async function validatePetRegistration(data) {
     fail(400, 'Enter a valid estimated weight or leave it blank.', { weight: 'Estimated weight must be above 0 and at most 500 kg.' });
   return estimate == null || estimate === '' ? undefined : Number(estimate);
 }
-module.exports = { getBreeds, validatePetRegistration };
+module.exports = { getBreeds, validatePetRegistration, validatePetGender };

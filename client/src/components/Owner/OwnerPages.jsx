@@ -1,3 +1,4 @@
+import PetGenderField from "../Shared/PetGenderField";
 import ClinicDateTime from "../Shared/ClinicDateTime";
 import { appointmentId, appointmentServiceLabel, formatDateTime } from "../../api";
 import { screenFromPath } from "../../routes";
@@ -31,6 +32,7 @@ import {
   formatDate,
   formatPetWeight,
   formatPetAge,
+  formatPetGender,
   formatSpecies,
   formatTime,
   shortId,
@@ -481,6 +483,7 @@ export function PetCards({ pets, admin = false, select, selected }) {
             estimatedWeight,
             picture,
             birthDate,
+            gender,
           }) => (
             <Panel key={_id} className={`pet-profile-card${selected === _id ? " is-selected" : ""}`}>
               <div className="pet-card">
@@ -494,7 +497,7 @@ export function PetCards({ pets, admin = false, select, selected }) {
                 <div className="pet-card-info">
                   <h2>{name}</h2>
                   <p>
-                    {formatSpecies({ species, otherSpecies })} · {breed}
+                    {formatSpecies({ species, otherSpecies })} · {breed} · {formatPetGender({ gender })}
                   </p>
                   <Status value={status} />
                   <p>
@@ -621,6 +624,7 @@ export function PetDetail({ admin = false }) {
                   ["Name", data.name],
                   ["Species", formatSpecies(data)],
                   ["Breed", data.breed],
+                  ["Gender", formatPetGender(data)],
                   ["Current / estimated weight", formatPetWeight(data)],
                   ["Age", formatPetAge(data)],
                   ["Date of birth", formatDate(data.birthDate)],
@@ -656,6 +660,7 @@ export function PetDetail({ admin = false }) {
                 onClick={() => {
                   form.setFieldsValue({
                     ...data,
+                    gender: data.gender || "Unknown",
                     birthDate: data.birthDate?.slice(0, 10),
                   });
                   setEditing(true);
@@ -726,6 +731,7 @@ export function PetDetail({ admin = false }) {
               <Input />
             </Form.Item>
           ))}
+          <PetGenderField />
           <Form.Item
             label={data.emergencyRegistration?"Birth date (if known)":"Birth date"}
             name="birthDate"
@@ -836,7 +842,7 @@ export function MedicalRecords({ admin = false }) {
           action={<Status value={admin ? "Admin access" : "View only"} />}
         >
           <p>
-            {data.pet?.breed} · Pet record {shortId(id, "PET-")}
+            {data.pet?.breed} · {formatPetGender(data.pet)} · Pet record {shortId(id, "PET-")}
           </p>
           <Tabs
             activeKey={tab}

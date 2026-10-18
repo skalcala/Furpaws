@@ -1,4 +1,5 @@
 import { Alert, Button, Form, Input, Select } from 'antd';
+import PetGenderField from './PetGenderField';
 import { useResource } from './UI';
 
 export default function PetRegistrationFields({ form }) {
@@ -19,6 +20,7 @@ export default function PetRegistrationFields({ form }) {
           <Select showSearch optionFilterProp="label" loading={breeds.loading} disabled={breeds.loading} placeholder={`Choose a ${species.toLowerCase()} breed`} options={(breeds.data.species === species ? breeds.data.breeds || [] : []).map(value => ({ value, label: value }))} />
         )}
       </Form.Item>
+      <PetGenderField />
       {breeds.error && species !== 'Other' && <Alert type="error" message={breeds.error} action={<Button onClick={breeds.refresh}>Retry</Button>} />}
     </>
   );

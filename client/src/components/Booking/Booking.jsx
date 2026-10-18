@@ -12,6 +12,7 @@ import {
   errorMessage,
   formatDate,
   formatTime,
+  formatPetGender,
   isFollowUpService,
   serviceLabel,
 } from "../../api";
@@ -26,6 +27,7 @@ const blank = {
     species: "Dog",
     otherSpecies: "",
     breed: "",
+    gender: "Unknown",
     birthDate: "",
     weight: null,
     picture: "",
@@ -410,6 +412,7 @@ export default function Booking() {
       const saved = {
         ...data,
         petName: pet?.name || draft.registration.name,
+        gender: draft.bookingType === "With record" ? pet?.gender : draft.registration.gender,
         serviceName: service?.name,
       };
       setConfirmation(saved);
@@ -630,6 +633,7 @@ export default function Booking() {
               entries={[
                 ["Booking type", draft.bookingType],
                 ["Pet", pet?.name || draft.registration.name],
+                ["Gender", formatPetGender(draft.bookingType === "With record" ? pet : draft.registration)],
                 ["Service", service?.name],
                 ...(service?.type === "Consultation"
                   ? [["Owner’s explanation / symptoms", draft.reasonForVisit]]
@@ -673,6 +677,7 @@ export default function Booking() {
                 ["Created", formatDateTime(confirmation.createdAt)],
                 ["Booking type", confirmation.bookingType],
                 ["Pet", confirmation.petName],
+                ["Gender", formatPetGender(confirmation)],
                 ["Service", confirmation.serviceName],
                 ...(confirmation.reasonForVisit
                   ? [

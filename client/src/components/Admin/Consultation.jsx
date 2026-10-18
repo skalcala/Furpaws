@@ -15,6 +15,7 @@ import {
   errorMessage,
   formatDate,
   formatPetAge,
+  formatPetGender,
   formatTime,
   money,
 } from "../../api";
@@ -271,6 +272,7 @@ export default function Consultation() {
                     "Species / breed",
                     `${appointment.pet?.species === "Other" ? appointment.pet?.otherSpecies || "Other" : appointment.pet?.species} · ${appointment.pet?.breed}`,
                   ],
+                  ["Gender", formatPetGender(appointment.pet)],
                   ["Age", formatPetAge(appointment.pet || {})],
                   [
                     "Last recorded weight",

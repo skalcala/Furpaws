@@ -54,6 +54,7 @@ export const shortId = (id, prefix = "") =>
     .toUpperCase()}`;
 
 export const formatSpecies = ({ species, otherSpecies }) => species === "Other" ? otherSpecies || "Other" : species;
+export const formatPetGender = pet => ["Male", "Female"].includes(pet?.gender) ? pet.gender : "Not recorded";
 export const formatPetWeight = ({ weight, estimatedWeight }) =>
   weight != null ? `${weight} kg` : estimatedWeight != null ? `Approx. ${estimatedWeight} kg (owner estimate)` : "Not yet measured";
 

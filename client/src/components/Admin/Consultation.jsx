@@ -1,3 +1,4 @@
+import FollowUpBooking from "./FollowUpBooking";
 import { appointmentId, appointmentServiceLabel, formatDateTime } from "../../api";
 import PrescriptionEditor from "./PrescriptionEditor";
 import { useEffect, useState } from "react";
@@ -60,6 +61,7 @@ export default function Consultation() {
     vaccine: "Rabies",
     dateGiven: dayKey(),
     nextDueDate: "",
+    followUp: { enabled: false, date: "", time: "", purpose: "Follow-up checkup", instructions: "" },
   });
   const [prescriptionPending, setPrescriptionPending] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -77,6 +79,7 @@ export default function Consultation() {
       vaccine: "Rabies",
       dateGiven: dayKey(),
       nextDueDate: "",
+      followUp: { enabled: false, date: "", time: "", purpose: "Follow-up checkup", instructions: "" },
     });
     setError("");
     setErrors({});
@@ -89,11 +92,15 @@ export default function Consultation() {
     if (bookedSymptoms)
       setValues((v) => (v.symptoms ? v : { ...v, symptoms: bookedSymptoms }));
   }, [bookedSymptoms]);
+  useEffect(() => {
+    if (appointment?.date) setValues(current => ({ ...current, dateGiven: appointment.date }));
+  }, [appointment?.date]);
   const vaccination = appointment?.service?.type === "Vaccination";
+  const queueBack = `/admin/todays-queue${params.get("date") ? "?date=" + encodeURIComponent(params.get("date")) : ""}`;
   const change = (key, value) => setValues((v) => ({ ...v, [key]: value }));
   const leave = () => {
     const go = () =>
-      navigate(params.get("from") === "queue" ? "/admin/todays-queue" : "/admin/consultations");
+      navigate(params.get("from") === "queue" ? queueBack : "/admin/consultations");
     if (
       values.weight ||
       values.diagnosis ||
@@ -101,7 +108,7 @@ export default function Consultation() {
       prescriptionPending ||
       values.procedure !== "N/A" ||
       values.notes ||
-      values.nextDueDate
+      values.nextDueDate || values.followUp.enabled
     )
       modal.confirm({
         title: "Leave this consultation?",
@@ -114,6 +121,9 @@ export default function Consultation() {
   };
   const complete = async () => {
     const next = {
+      ...(values.followUp.enabled && (!values.followUp.date || values.followUp.date < (appointment?.date || dayKey())) ? { followUpDate: "Choose a date on or after this visit." } : {}),
+      ...(values.followUp.enabled && !values.followUp.time ? { followUpTime: "Choose an available time." } : {}),
+      ...(values.followUp.enabled && !values.followUp.purpose.trim() ? { followUpPurpose: "Enter the reason for follow-up." } : {}),
       ...(!vaccination && prescriptionPending ? { prescription: "Add the medicine to the prescription or clear its fields before completing." } : {}),
       ...(!values.weight ? { weight: "Enter the measured weight." } : {}),
       ...(!vaccination && !values.symptoms.trim()
@@ -143,6 +153,7 @@ export default function Consultation() {
         prescription: vaccination ? "" : values.prescription,
         procedure: values.procedure,
         notes: values.notes,
+        followUp: values.followUp,
         ...(vaccination
           ? {
               vaccination: {
@@ -153,6 +164,7 @@ export default function Consultation() {
             }
           : {}),
       });
+      if (data.followUpAppointment) message.success(`Follow-up booked for ${formatDate(data.followUpAppointment.date)}, ${formatTime(data.followUpAppointment.time)}.`);
       message.success(
         data.nextAppointment
           ? `Visit completed. Bill ${money(data.bill.total)} created. Next vaccination booked for ${formatDate(data.nextAppointment.date)}, ${formatTime(data.nextAppointment.time)}; the owner was notified.`
@@ -173,6 +185,7 @@ export default function Consultation() {
           data={history.data}
           columns={[
             { title: "Appointment", render: (_, record) => appointmentId(record.appointment) },
+            { title: "Visit date", render: (_, record) => formatDate(record.visitDate || record.appointment?.date || record.createdAt) },
             { title: "Created", dataIndex: "createdAt", render: formatDateTime },
             { title: "Visit type", render: (_, record) => record.appointment?.source === "Emergency" ? "Emergency" : "Consultation" },
             { title: "Pet", render: (_, r) => r.pet?.name },
@@ -224,7 +237,7 @@ export default function Consultation() {
             ? "Emergency Consultation"
             : "Consultation"
         }
-        backTo={params.get("from") === "queue" ? "/admin/todays-queue" : "/admin/consultations"}
+        backTo={params.get("from") === "queue" ? queueBack : "/admin/consultations"}
         backLabel={
           params.get("from") === "queue"
             ? "Back to Queue"
@@ -342,7 +355,7 @@ export default function Consultation() {
                         <Input
                           id="dateGiven"
                           type="date"
-                          max={dayKey()}
+                          max={appointment.date}
                           value={values.dateGiven}
                           onChange={(e) => change("dateGiven", e.target.value)}
                         />
@@ -402,6 +415,7 @@ export default function Consultation() {
                 </Panel>
               </div>
             </div>
+            <FollowUpBooking value={values.followUp} onChange={v => change("followUp", v)} errors={errors} minDate={appointment.date > dayKey() ? appointment.date : dayKey()} />
             <div className="row form-actions">
               <Button disabled={busy} onClick={leave}>
                 Back · Leave consultation

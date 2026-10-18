@@ -19,6 +19,7 @@ const ConsultationSchema = new mongoose.Schema(
     pet: ref("Pet"),
     owner: ref("User"),
     admin: ref("User"),
+    visitDate: String,
     weight: number(true, 500),
     symptoms: text(false, 2000),
     diagnosis: text(false, 2000),
@@ -31,6 +32,8 @@ const ConsultationSchema = new mongoose.Schema(
     followUp: {
       enabled: { type: Boolean, default: false },
       date: String,
+      time: String,
+      appointment: ref("Appointment", false),
       purpose: text(false, 2000),
       instructions: text(false, 2000),
     },

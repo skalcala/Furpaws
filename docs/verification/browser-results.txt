@@ -1,8 +1,0 @@
-
-> furpaws-clinic@1.0.0 test:browser
-> node tests/browser.cjs
-
-Owner booking completed
-Admin approval and required reason verified
-Consultation completion and automatic billing verified
-{"failures":[],"booking":"6ad20f2632553489b042ecc9","pet":"6ad20f2632553489b042ecc6"}

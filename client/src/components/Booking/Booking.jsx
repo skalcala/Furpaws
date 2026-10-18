@@ -57,7 +57,6 @@ export function SchedulePicker({
   );
   const [availability, setAvailability] = useState({});
   const [slots, setSlots] = useState([]);
-  const [ownerDailyLimitReached, setOwnerDailyLimitReached] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
@@ -95,13 +94,11 @@ export function SchedulePicker({
     if (!value.date) return;
     let active = true;
     setSlots([]);
-    setOwnerDailyLimitReached(false);
     const refresh = () => api
       .get(`/appointments/slots?date=${value.date}${rescheduleQuery}`)
       .then(({ data }) => {
         if (!active) return;
         setSlots(data.slots);
-        setOwnerDailyLimitReached(!!data.ownerDailyLimitReached);
         setAvailability(current => ({ ...current, [value.date]: data.slots }));
       })
       .catch((failure) => active && setError(errorMessage(failure)));
@@ -269,7 +266,6 @@ export function SchedulePicker({
             {value.date ? formatDate(value.date) : "Choose an available date"}
           </h3>
           <p>Available time slots</p>
-          {ownerDailyLimitReached && <Alert type="info" showIcon message="You already have a Pending or Approved visit on this date. Choose another day or cancel that booking first." />}
           <div className="row wrap">
             {slots.map(({ time, status }) => (
               <Button

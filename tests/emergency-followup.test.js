@@ -121,7 +121,9 @@ test("Phone/email sign-in, emergency existing/guest records, optional follow-up,
     ).status,
     400,
   );
-  const date = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const returnDay = new Date(Date.now() + 7 * 86400000);
+  while ([0,6].includes(returnDay.getUTCDay())) returnDay.setUTCDate(returnDay.getUTCDate()+1);
+  const date = returnDay.toISOString().slice(0,10);
   const finished = await request("/consultations/complete", {
     token: admin.data.token,
     body: {

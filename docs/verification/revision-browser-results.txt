@@ -1,8 +1,0 @@
-
-> furpaws-clinic@1.0.0 test:revision
-> node tests/revision-browser.cjs
-
-◇ injected env (4) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
-Consultation: required details, review, persistence, and confirmation passed.
-Follow-up: required history, review, and persisted booking passed.
-Owner explanation visible in Admin approval and consultation; equal gutters across 21 routes and mobile/tablet/desktop.

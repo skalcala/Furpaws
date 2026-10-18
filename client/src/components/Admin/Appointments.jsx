@@ -2,7 +2,7 @@ import { appointmentId, appointmentServiceLabel, formatDateTime } from "../../ap
 import VisitDetails from "../Shared/VisitDetails";
 import { useState } from "react";
 import { Alert, App, Button, Input, Modal, Tabs } from "antd";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   api,
   dayKey,
@@ -27,7 +27,8 @@ import { SchedulePicker } from "../Booking/Booking";
 export default function AdminAppointments({ mode = "appointments" }) {
   const resource = useResource("/appointments");
   const schedules = useResource("/schedules");
-  const [queueDate, setQueueDate] = useState(dayKey());
+  const [queueParams] = useSearchParams();
+  const [queueDate, setQueueDate] = useState(() => queueParams.get("date") || dayKey());
   const [cancellationReason, setCancellationReason] = useState("");
   const [cancelErrors, setCancelErrors] = useState({});
   const [status, setStatus] = useState("Approved");
@@ -156,7 +157,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
         ) : queue ? (
           <Link
             className="button primary"
-            to={`/admin/consultations/${record._id}?from=queue`}
+            to={`/admin/consultations/${record._id}?from=queue&date=${queueDate}`}
           >
             {record.source === "Emergency" ? "Continue Emergency" : "Start Consultation"}
           </Link>
@@ -261,7 +262,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
               ? "Approval Detail · No Record"
               : "Approvals · Pending Bookings"
             : queue
-              ? "Today’s Queue"
+              ? queueDate === dayKey() ? "Today’s Queue" : `Queue · ${formatDate(queueDate)}`
               : "Appointments · Table & Calendar"
         }
         backTo={id ? "/admin/approvals" : undefined}

@@ -19,7 +19,7 @@ const {
   assertFields,
 } = require("../utils/core");
 const { normalizePhone } = require("../utils/phone");
-const { findOpenSlot } = require("./appointmentController");
+const { findOpenSlot, validateSlot } = require("./appointmentController");
 const { PROCEDURES } = Consultation;
 const getConsultations = async (req, res) =>
   res.json(
@@ -32,7 +32,7 @@ const getConsultations = async (req, res) =>
   );
 function followUpDetails(value) {
   if (value === undefined) return { enabled: false };
-  assertFields(value, ["enabled", "date", "purpose", "instructions"]);
+  assertFields(value, ["enabled", "date", "time", "purpose", "instructions"]);
   if (typeof value.enabled !== "boolean")
     fail(400, "Choose whether a follow-up is needed.");
   if (!value.enabled) return { enabled: false };
@@ -45,6 +45,7 @@ function followUpDetails(value) {
     fail(400, "Choose a follow-up date today or later.", {
       followUpDate: "Choose a valid follow-up date.",
     });
+  if (value.time !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(value.time)) fail(400, "Choose a valid follow-up time.", { followUpTime: "Choose a valid time." });
   for (const key of ["purpose", "instructions"])
     if (
       value[key] !== undefined &&
@@ -58,6 +59,7 @@ function followUpDetails(value) {
   return {
     enabled: true,
     date: value.date,
+    time: value.time,
     purpose: value.purpose.trim(),
     instructions: (value.instructions || "").trim(),
   };
@@ -146,12 +148,12 @@ const completeConsultation = async (req, res) =>
           !vaccination.nextDueDate ||
           Number.isNaN(Date.parse(vaccination.dateGiven)) ||
           Number.isNaN(Date.parse(vaccination.nextDueDate)) ||
-          vaccination.dateGiven > today() ||
+          vaccination.dateGiven > appointment.date ||
           vaccination.nextDueDate <= vaccination.dateGiven
         )
           fail(
             400,
-            "Use a valid vaccine, a past/today date given, and a later due date.",
+            "Use a valid vaccine, a date given no later than the visit date, and a later due date.",
             { nextDueDate: "Next due date must be after date given." },
           );
       }
@@ -162,6 +164,7 @@ const completeConsultation = async (req, res) =>
             pet: appointment.pet,
             owner: appointment.owner,
             admin: req.user._id,
+            visitDate: appointment.date,
             weight,
             symptoms,
             diagnosis,
@@ -178,7 +181,7 @@ const completeConsultation = async (req, res) =>
       const oldWeight = pet.weight;
       pet.weight = weight;
       pet.status = "Approved";
-      pet.weightHistory.push({ date: new Date(), weight });
+      pet.weightHistory.push({ date: new Date(`${appointment.date}T${appointment.time}:00+08:00`), weight });
       await pet.save({ session });
       appointment.status = "Completed";
       appointment.admin = req.user._id;
@@ -197,12 +200,31 @@ const completeConsultation = async (req, res) =>
         );
       // Next vaccination: book the owner's next appointment automatically.
       let nextAppointment = null;
+      let followUpAppointment = null;
+      if (followUp.enabled) {
+        if (followUp.date < appointment.date) fail(400, "Follow-up must be on or after this consultation date.", { followUpDate: "Choose a date on or after the visit." });
+        const followUpService = await Service.findOne({ active: true, type: "Consultation", name: /follow[ -]?up/i }).session(session);
+        if (!followUpService) fail(409, "Configure an active follow-up consultation service before booking the return visit.");
+        const followUpTime = followUp.time || await findOpenSlot(followUp.date, appointment.time, session);
+        if (!followUpTime) fail(409, "No follow-up slot is available on this date. Choose another date.", { followUpTime: "Choose an available slot." });
+        try { await validateSlot(followUp.date, followUpTime, session); }
+        catch (error) { if (error.status === 409) error.errors = { followUpTime: "This follow-up slot is no longer available. Choose another time." }; throw error; }
+        [followUpAppointment] = await Appointment.create([{
+          owner: appointment.owner, pet: pet._id, service: followUpService._id,
+          date: followUp.date, time: followUpTime, bookingType: "With record",
+          status: "Approved", source: "Clinic", admin: req.user._id,
+          reasonForVisit: followUp.purpose,
+        }], { session });
+        consultation.followUp.time = followUpTime;
+        consultation.followUp.appointment = followUpAppointment._id;
+        await consultation.save({ session });
+        await audit(req.user, "Book follow-up", "appointments", followUpAppointment._id, undefined, followUpAppointment.toObject(), session);
+      }
       if (vaccination) {
         const time = await findOpenSlot(
           vaccination.nextDueDate,
           appointment.time,
           session,
-          appointment.owner,
         );
         if (time) {
           [nextAppointment] = await Appointment.create(
@@ -266,6 +288,11 @@ const completeConsultation = async (req, res) =>
           },
           session,
         );
+        if (followUpAppointment) await notify({
+          owner: owner._id, pet: pet._id, appointment: followUpAppointment._id,
+          title: "Follow-up appointment booked",
+          message: `${pet.name}'s follow-up is approved for ${followUpAppointment.date} at ${followUpAppointment.time}. ${followUp.purpose}`.slice(0, 2000),
+        }, session);
         await notify(
           {
             owner: owner._id,
@@ -276,15 +303,15 @@ const completeConsultation = async (req, res) =>
                 ? "Next vaccination scheduled"
                 : "Vaccination due soon"
               : followUp.enabled
-                ? "Follow-up checkup recommended"
+                ? "Follow-up care plan"
                 : "Medical care reminder",
-            message: vaccination
+            message: (vaccination
               ? nextAppointment
                 ? `${pet.name} · ${vaccination.vaccine} booster is booked for ${nextAppointment.date} at ${nextAppointment.time}. See My Appointments to review or reschedule.`
                 : `${pet.name} · ${vaccination.vaccine} next due ${vaccination.nextDueDate}. The next visit was not booked automatically. Review your existing appointments or arrange another available date.`
               : followUp.enabled
-                ? `${pet.name} · Suggested checkup ${followUp.date}. ${followUp.purpose}. ${followUp.instructions} Please book an available appointment.`
-                : `${pet.name}: Follow the saved care instructions. ${prescription ? `Prescription: ${prescription}. ` : ""}${notes || ""}`,
+                ? `${pet.name} · Follow-up booked for ${followUp.date} at ${followUpAppointment.time}. ${followUp.purpose}. ${followUp.instructions}`
+                : `${pet.name}: Follow the saved care instructions. ${prescription ? `Prescription: ${prescription}. ` : ""}${notes || ""}`).slice(0, 2000),
             dueAt: followUp.enabled
               ? new Date(`${followUp.date}T00:00:00+08:00`)
               : vaccination
@@ -330,7 +357,7 @@ const completeConsultation = async (req, res) =>
         bill.toObject(),
         session,
       );
-      return { consultation, bill, appointment, nextAppointment };
+      return { consultation, bill, appointment, nextAppointment, followUpAppointment };
     }),
   );
 const startEmergency = async (req, res) =>

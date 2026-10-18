@@ -111,13 +111,6 @@ export default function Login() {
                       </p>
                     )
                   )}
-                  <Form.Item
-                    label="Address"
-                    name="address"
-                    rules={[{ max: 300 }]}
-                  >
-                    <Input />
-                  </Form.Item>
                 </>
               )}
               <Form.Item
@@ -136,7 +129,7 @@ export default function Login() {
                 <Input
                   autoComplete={register ? "email" : "username"}
                   placeholder={
-                    register ? "you@example.com" : "Email or 09XXXXXXXXX"
+                    register ? "you@example.com" : "Email or Phone number"
                   }
                 />
               </Form.Item>

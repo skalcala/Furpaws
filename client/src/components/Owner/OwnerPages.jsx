@@ -63,7 +63,7 @@ const pageDescriptions = {
   U10: "Booking decisions, medical updates, and care reminders.",
   A2: "Review booking requests and the pet details that need approval.",
   A3: "Organize upcoming visits and manage appointment updates.",
-  A4: "Keep today’s approved appointments moving through care.",
+  A4: "Review approved appointments for the selected queue date.",
   A5: "Consultations, clinical findings, and follow-up checkups.",
   A6: "Owner contact details, pet profiles, and medical information.",
   A7: "Track vaccinations, administered doses, and next due dates.",
@@ -754,7 +754,7 @@ export function MedicalRecords({ admin = false }) {
   const consultations = data.consultations || [];
   const followUps = consultations
     .filter((record) => record.followUp?.enabled)
-    .map((record) => ({ ...record, ...record.followUp }));
+    .map((record) => ({ ...record, ...record.followUp, bookedAppointment: record.followUp.appointment }));
   const save = async (values) => {
     setBusy(true);
     try {
@@ -770,6 +770,7 @@ export function MedicalRecords({ admin = false }) {
   };
   let columns = [
     { title: "Appointment", render: (_, record) => appointmentId(record.appointment) },
+    { title: "Visit date", render: (_, record) => formatDate(record.visitDate || record.appointment?.date || record.createdAt) },
     { title: "Created", dataIndex: "createdAt", render: formatDateTime },
     { title: "Symptoms", dataIndex: "symptoms" },
     { title: "Diagnosis", dataIndex: "diagnosis" },
@@ -784,7 +785,9 @@ export function MedicalRecords({ admin = false }) {
   if (tab === "Follow-up Plans") {
     rows = followUps;
     columns = [
-      { title: "Suggested checkup", dataIndex: "date", render: formatDate },
+      { title: "Follow-up date", dataIndex: "date", render: formatDate },
+      { title: "Time", dataIndex: "time", render: formatTime },
+      { title: "Booking", render: (_, record) => record.bookedAppointment ? "Booked" : "Suggested" },
       { title: "Purpose", dataIndex: "purpose" },
       { title: "Care instructions", dataIndex: "instructions" },
       { title: "Admin", render: (_, record) => record.admin?.name },
@@ -805,11 +808,6 @@ export function MedicalRecords({ admin = false }) {
       { title: "Weight (kg)", dataIndex: "weight" },
     ];
   }
-  if (tab === "Admin Notes")
-    columns = [
-      { title: "Created", dataIndex: "createdAt", render: formatDateTime },
-      { title: "Admin notes", dataIndex: "notes" },
-    ];
   if (tab === "Previous Appointments") {
     rows = data.appointments || [];
     columns = [
@@ -849,7 +847,6 @@ export function MedicalRecords({ admin = false }) {
               "Follow-up Plans",
               "Vaccinations",
               "Weight History",
-              "Admin Notes",
               "Previous Appointments",
             ].map((label) => ({ key: label, label }))}
           />
@@ -871,7 +868,9 @@ export function MedicalRecords({ admin = false }) {
             {followUps[0] ? (
               <Details
                 entries={[
-                  ["Suggested checkup", formatDate(followUps[0].date)],
+                  ["Follow-up date", formatDate(followUps[0].date)],
+                  ["Time", formatTime(followUps[0].time)],
+                  ["Booking", followUps[0].bookedAppointment ? "Booked" : "Suggested"],
                   ["Purpose", followUps[0].purpose],
                   [
                     "Care instructions",
@@ -884,8 +883,8 @@ export function MedicalRecords({ admin = false }) {
               <p>No follow-up checkup recommended.</p>
             )}
             <p className="muted">
-              A suggested date does not reserve a slot. Book an available
-              appointment when a return visit is needed.
+              Follow-ups marked Booked are already reserved. Older suggested plans
+              require an available appointment to be booked.
             </p>
           </Panel>
           <Panel title="Vaccinations and weight">

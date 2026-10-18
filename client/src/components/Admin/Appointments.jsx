@@ -46,7 +46,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const { id } = useParams();
-  const current = selected || resource.data.find(({ _id }) => _id === id);
+  const current = resource.data.find(({ _id }) => _id === (selected?._id || id)) || selected;
   const approval = mode === "approvals";
   const queue = mode === "queue";
   const rows = resource.data.filter(({ status: value, date }) =>
@@ -57,6 +57,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
         : value === status,
   );
   const decision = async (value) => {
+    if (!current || current.status !== "Pending") return;
     if (value === "Declined" && !reason.trim()) {
       setErrors({ reason: "Decline reason is required." });
       return;
@@ -75,6 +76,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
       message.success(`Appointment ${value.toLowerCase()}.`);
       if (id) navigate("/admin/approvals");
     } catch (failure) {
+      if (failure.response?.status === 409) await resource.refresh();
       setError(errorMessage(failure));
       setErrors(failure.response?.data?.errors || {});
     } finally {
@@ -228,7 +230,8 @@ export default function AdminAppointments({ mode = "appointments" }) {
           )}
         </Panel>
       )}
-      {error && <Alert type="error" message={error} />}
+      {current.status === "Pending" && error && <Alert type="error" message={error} />}
+      {current.status === "Pending" ? (
       <div className="row">
         <Button
           type="primary"
@@ -248,6 +251,12 @@ export default function AdminAppointments({ mode = "appointments" }) {
           Decline
         </Button>
       </div>
+      ) : (
+        <div>
+          <p role="status">This appointment has been {current.status.toLowerCase()}.</p>
+          {current.status === "Declined" && current.declineReason && <p>Reason: {current.declineReason}</p>}
+        </div>
+      )}
       <Note>
         {current.bookingType === "No record"
           ? `Approving this No record booking also approves ${current.pet?.name}. `
@@ -356,7 +365,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
       </Modal>
       <Modal
         title="Decline appointment"
-        open={decline}
+        open={decline && current?.status === "Pending"}
         onCancel={() => setDecline(false)}
         footer={
           <div className="row end">

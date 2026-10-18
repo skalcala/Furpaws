@@ -1,6 +1,6 @@
 # Active public landing-page photographs
 
-Photos on the public landing page come from Magnific (formerly Freepik) and Pexels stock. No image-generation or AI-editing tool was used for these replacements. The earlier generated images in `../marketing/` are no longer referenced by the page.
+The landing page uses Magnific (formerly Freepik) stock photos and a booking image supplied by the site owner. No image-generation or AI-editing tool was used for these replacements. The earlier generated images in `../marketing/` are no longer referenced by the page.
 
 ## pets-magnific.jpg
 
@@ -27,13 +27,11 @@ Photos on the public landing page come from Magnific (formerly Freepik) and Pexe
 Both Magnific free downloads presented a Copy attribution control. Source credits are included in the public footer; original photos are saved locally without AI transformations. These are stock models and animals, not photographs of FurPaws personnel or its actual premises.
 
 
-## booking-pets-pexels.jpg
+## booking-vet-pets.png
 
-- Title: Person Holding a Brown Dog and a Cat
-- Photographer: Nadia Vasil’eva
-- Source: https://www.pexels.com/photo/person-holding-a-brown-dog-and-a-cat-6821106/
-- License: Pexels License — https://www.pexels.com/license/
-- Original dimensions: 3939 × 2346 pixels; local web-sized copy: 1200 × 715 pixels.
-- Download: the source page’s official images.pexels.com image, resized to width 1200 with compression; no crop parameter or local image edits.
-- Used only in the appointment booking banner, shown at its natural aspect ratio without cropping.
-- Photographer credit is linked in the public footer.
+- Supplied by the site owner in this conversation: Screenshot 2026-10-19 at 5.53.13 AM.png.
+- Shows a gray-and-white cat and a pug on a veterinary examination table.
+- Dimensions: 1726 × 924 pixels.
+- Source branding visible in the supplied image: Magnific. No source page or download license was provided with the screenshot.
+- Copied unchanged, with all existing watermarks preserved.
+- Used only in the booking banner at the original aspect ratio, without cropping.

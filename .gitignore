@@ -17,5 +17,5 @@ playwright-report/
 .vercel
 .env*
 
-# Retained nested checkout; run this project from the website folder.
+# Prevent accidentally adding another checkout inside this project.
 /Furpaws/

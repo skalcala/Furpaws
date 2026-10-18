@@ -12,5 +12,5 @@ tests
 *.log
 .DS_Store
 
-# Retained nested checkout; deploy the repaired root project.
+# Exclude accidental nested project copies.
 Furpaws

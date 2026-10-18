@@ -1128,3 +1128,18 @@
   .owner-home .reminder-tile .text-action { grid-column: 2; margin-left: 0; }
   .admin-app .dashboard-hero { padding: 20px; }
 }
+
+/* Reports keep a clear gap between the period, summary and detail panels. */
+.report-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+.report-layout > p { margin: 0; }
+@media (max-width: 600px) {
+  .report-layout { gap: 18px; }
+}
+@media print {
+  .report-layout { gap: 16px; }
+}

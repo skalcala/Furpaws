@@ -1168,7 +1168,7 @@ export function Reports() {
         <Button onClick={() => window.print()}>Print Report</Button>
       </div>
       <RequestState {...records} retry={records.refresh}>
-        <div className="print-area">
+        <div className="print-area report-layout">
           <p>
             Reporting period · {formatDate(period.start)} –{" "}
             {formatDate(period.end)}

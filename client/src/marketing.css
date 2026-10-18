@@ -371,7 +371,7 @@
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 1fr 1.5fr 0.7fr;
+  grid-template-columns: 1.5fr 0.5fr 1fr;
   align-items: center;
   gap: var(--space-panel);
   background: var(--colorBlush);
@@ -760,7 +760,7 @@
     padding: var(--size48) 0;
   }
   .public-booking-banner {
-    grid-template-columns: 1fr 1.3fr;
+    grid-template-columns: 1.3fr 1fr;
   }
   .public-banner-sketch {
     display: none;

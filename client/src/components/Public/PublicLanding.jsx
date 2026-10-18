@@ -199,7 +199,6 @@ export default function PublicLanding() {
         </section>
         <section className="public-container public-booking-section">
           <div className="public-booking-banner">
-            <img src="/assets/stock/pets-magnific.jpg" alt="" loading="lazy" />
             <div>
               <span className="public-eyebrow">
                 <CalendarOutlined aria-hidden="true" /> BOOK AN APPOINTMENT
@@ -219,6 +218,7 @@ export default function PublicLanding() {
               <DashboardIcon name="pet" />
               <HeartOutlined aria-hidden="true" />
             </div>
+            <img src="/assets/stock/pets-magnific.jpg" alt="" loading="lazy" />
           </div>
         </section>
         <section className="public-how-section" id="how-it-works">

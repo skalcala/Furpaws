@@ -167,6 +167,7 @@ export default function AdminAppointments({ mode = "appointments" }) {
               onClick={() => {
                 setReschedule(record);
                 setSlot({
+                  pet: record.pet?._id,
                   date: record.date,
                   time: record.time,
                   service: record.service?._id,

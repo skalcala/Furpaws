@@ -47,6 +47,7 @@ export function SchedulePicker({
   const rescheduleQuery = excludeId
     ? `&excludeId=${encodeURIComponent(excludeId)}`
     : "";
+  const petQuery = value.bookingType !== "No record" && value.pet ? `&pet=${encodeURIComponent(value.pet)}` : "";
   const services = useResource("/services");
   const selectedService = services.data.find(
     ({ _id }) => _id === value.service,
@@ -57,6 +58,7 @@ export function SchedulePicker({
   );
   const [availability, setAvailability] = useState({});
   const [slots, setSlots] = useState([]);
+  const [petDailyLimitReached, setPetDailyLimitReached] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
@@ -95,10 +97,11 @@ export function SchedulePicker({
     let active = true;
     setSlots([]);
     const refresh = () => api
-      .get(`/appointments/slots?date=${value.date}${rescheduleQuery}`)
+      .get(`/appointments/slots?date=${value.date}${rescheduleQuery}${petQuery}`)
       .then(({ data }) => {
         if (!active) return;
         setSlots(data.slots);
+        setPetDailyLimitReached(Boolean(data.petDailyLimitReached));
         setAvailability(current => ({ ...current, [value.date]: data.slots }));
       })
       .catch((failure) => active && setError(errorMessage(failure)));
@@ -110,7 +113,7 @@ export function SchedulePicker({
       window.clearInterval(interval);
       window.removeEventListener("focus", refresh);
     };
-  }, [value.date, rescheduleQuery, retry]);
+  }, [value.date, rescheduleQuery, petQuery, retry]);
   const chooseDate = (date) => onChange({ ...value, date, time: "" });
   return (
     <>
@@ -265,12 +268,13 @@ export function SchedulePicker({
           <h3>
             {value.date ? formatDate(value.date) : "Choose an available date"}
           </h3>
+          {petDailyLimitReached && <Alert type="info" message="This pet already has an appointment on this date. Choose another date or a different pet. Other pets can still book available times." />}
           <p>Available time slots</p>
           <div className="row wrap">
             {slots.map(({ time, status }) => (
               <Button
                 key={time}
-                disabled={status !== "Available"}
+                disabled={petDailyLimitReached || status !== "Available"}
                 type={value.time === time && status === "Available" ? "primary" : "default"}
                 onClick={() => onChange({ ...value, time })}
               >
@@ -282,7 +286,7 @@ export function SchedulePicker({
           {errors.time && <small className="error-text">{errors.time}</small>}
           <p className="muted">
             Each visit reserves one 30-minute slot. Pending and approved bookings
-            make that time unavailable.
+            make that time unavailable. Each pet can have only one appointment per day.
           </p>
         </Panel>
       </div>
@@ -488,7 +492,7 @@ export default function Booking() {
                 <PetCards
                   pets={pets.data}
                   selected={draft.pet}
-                  select={(pet) => setDraft({ ...draft, pet })}
+                  select={(pet) => setDraft({ ...draft, pet, time: "" })}
                 />
               ) : (
                 <Note>No pets. Choose No record to register a new pet.</Note>

@@ -415,7 +415,7 @@ export default function Consultation() {
                 </Panel>
               </div>
             </div>
-            <FollowUpBooking value={values.followUp} onChange={v => change("followUp", v)} errors={errors} minDate={appointment.date > dayKey() ? appointment.date : dayKey()} />
+            <FollowUpBooking pet={appointment.pet?._id} value={values.followUp} onChange={v => change("followUp", v)} errors={errors} minDate={appointment.date > dayKey() ? appointment.date : dayKey()} />
             <div className="row form-actions">
               <Button disabled={busy} onClick={leave}>
                 Back · Leave consultation

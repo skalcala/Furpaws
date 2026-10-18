@@ -205,10 +205,10 @@ const completeConsultation = async (req, res) =>
         if (followUp.date < appointment.date) fail(400, "Follow-up must be on or after this consultation date.", { followUpDate: "Choose a date on or after the visit." });
         const followUpService = await Service.findOne({ active: true, type: "Consultation", name: /follow[ -]?up/i }).session(session);
         if (!followUpService) fail(409, "Configure an active follow-up consultation service before booking the return visit.");
-        const followUpTime = followUp.time || await findOpenSlot(followUp.date, appointment.time, session);
+        const followUpTime = followUp.time || await findOpenSlot(followUp.date, appointment.time, session, pet._id);
         if (!followUpTime) fail(409, "No follow-up slot is available on this date. Choose another date.", { followUpTime: "Choose an available slot." });
-        try { await validateSlot(followUp.date, followUpTime, session); }
-        catch (error) { if (error.status === 409) error.errors = { followUpTime: "This follow-up slot is no longer available. Choose another time." }; throw error; }
+        try { await validateSlot(followUp.date, followUpTime, session, undefined, pet._id); }
+        catch (error) { if (error.status === 409) error.errors = error.errors?.date ? { followUpDate: error.message } : { followUpTime: "This follow-up slot is no longer available. Choose another time." }; throw error; }
         [followUpAppointment] = await Appointment.create([{
           owner: appointment.owner, pet: pet._id, service: followUpService._id,
           date: followUp.date, time: followUpTime, bookingType: "With record",
@@ -225,6 +225,7 @@ const completeConsultation = async (req, res) =>
           vaccination.nextDueDate,
           appointment.time,
           session,
+          pet._id,
         );
         if (time) {
           [nextAppointment] = await Appointment.create(

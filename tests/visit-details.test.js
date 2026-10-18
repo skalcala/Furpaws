@@ -48,6 +48,7 @@ test("Consultations require details; follow-up notes are optional and follow-ups
       const day = new Date();
       day.setUTCDate(day.getUTCDate() + offset);
       const date = day.toISOString().slice(0, 10);
+      if (reserved.has(date)) continue;
       const { data } = await request(`/appointments/slots?date=${date}`, {
         token: owner,
       });
@@ -56,7 +57,7 @@ test("Consultations require details; follow-up notes are optional and follow-ups
           status === "Available" && !reserved.has(`${date}:${time}`),
       )?.time;
       if (time) {
-        reserved.add(`${date}:${time}`);
+        reserved.add(date);
         return { date, time };
       }
     }

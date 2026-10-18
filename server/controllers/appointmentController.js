@@ -56,9 +56,16 @@ const slotState = async (date, time, schedule, session, excludeId, counts) => {
     ? "Full"
     : "Available";
 };
-const validateSlot = async (date, time, session, excludeId) => {
+const petHasDailyBooking = (pet, date, session, excludeId) => pet && Appointment.exists({
+  pet, date, source: { $ne: "Emergency" },
+  status: { $in: ["Pending", "Approved", "Completed"] },
+  ...(excludeId ? { _id: { $ne: excludeId } } : {}),
+}).session(session || null);
+const validateSlot = async (date, time, session, excludeId, pet) => {
   const schedule = await lockSchedule(session);
   if (!schedule) fail(500, "Clinic schedule has not been configured.");
+  if (await petHasDailyBooking(pet, date, session, excludeId))
+    fail(409, "This pet already has an appointment on this date. Choose another date or a different pet.", { date: "One appointment per pet per day." });
   const state = await slotState(date, time, schedule, session, excludeId);
   if (state !== "Available")
     fail(
@@ -71,9 +78,9 @@ const validateSlot = async (date, time, session, excludeId) => {
 };
 // First open slot on `date`, trying `preferredTime` first. Used when the clinic
 // schedules a pet's next vaccination automatically.
-const findOpenSlot = async (date, preferredTime, session) => {
+const findOpenSlot = async (date, preferredTime, session, pet) => {
   const schedule = await lockSchedule(session);
-  if (!schedule) return null;
+  if (!schedule || await petHasDailyBooking(pet, date, session)) return null;
   const candidates = [
     preferredTime,
     ...timesForDate(schedule, date).filter((time) => time !== preferredTime),
@@ -95,6 +102,12 @@ const getSlots = async (req, res) => {
     excludeId = appointment._id;
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) fail(400, "Choose a valid date.");
+  let petDailyLimitReached = false;
+  if (req.query.pet) {
+    const pet = await getDoc(Pet, req.query.pet);
+    if (req.user.role !== "ADMIN" && String(pet.owner) !== String(req.user._id)) fail(404, "Pet not found.");
+    petDailyLimitReached = Boolean(await petHasDailyBooking(pet._id, date, null, excludeId));
+  }
   // One query per day keeps the owner calendar fast with half-hour slots.
   const bookings = await Appointment.find({
     date, source: { $ne: "Emergency" }, status: { $in: ["Pending", "Approved", "Completed"] },
@@ -108,7 +121,7 @@ const getSlots = async (req, res) => {
       status: await slotState(date, time, schedule, null, excludeId, counts),
     })),
   );
-  res.json({ date, slots, capacity: SLOT_CAPACITY, intervalMinutes: 30 });
+  res.json({ date, slots, petDailyLimitReached, capacity: SLOT_CAPACITY, intervalMinutes: 30 });
 };
 const getAppointments = async (req, res) =>
   res.json(
@@ -222,14 +235,14 @@ const createAppointment = async (req, res) =>
           samePets.length &&
           (await Appointment.exists({
             pet: { $in: samePets.map((p) => p._id) },
+            source: { $ne: "Emergency" },
             date,
-            time,
             status: { $in: ["Pending", "Approved", "Completed"] },
           }).session(session))
         )
           fail(
             409,
-            "This pet already has a booking for the selected date and time.",
+            "This pet already has an appointment on this date. Choose another date.",
           );
         const [created] = await Pet.create(
           [
@@ -255,11 +268,11 @@ const createAppointment = async (req, res) =>
         await Appointment.exists({
           pet: pet._id,
           date,
-          time,
+          source: { $ne: "Emergency" },
           status: { $in: ["Pending", "Approved", "Completed"] },
         }).session(session)
       )
-        fail(409, "This pet already has an appointment in this slot.");
+        fail(409, "This pet already has an appointment on this date. Choose another date.");
       const [appointment] = await Appointment.create(
         [
           {
@@ -320,6 +333,7 @@ const decideAppointment = async (req, res) =>
           appointment.time,
           session,
           appointment._id,
+          appointment.pet,
         );
         const pet = await getDoc(Pet, appointment.pet, session);
         if (pet.status !== "Approved") {
@@ -440,17 +454,8 @@ const updateAppointment = async (req, res) =>
           req.body.time,
           session,
           appointment._id,
+          appointment.pet,
         );
-        if (
-          await Appointment.exists({
-            _id: { $ne: appointment._id },
-            pet: appointment.pet,
-            date: req.body.date,
-            time: req.body.time,
-            status: { $in: ["Pending", "Approved", "Completed"] },
-          }).session(session)
-        )
-          fail(409, "This pet already has a booking in this slot.");
         appointment.date = req.body.date;
         appointment.time = req.body.time;
       }

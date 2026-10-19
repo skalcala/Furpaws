@@ -27,6 +27,8 @@ const UserSchema = new mongoose.Schema(
       select: false,
     },
     phoneNormalized: { type: String, unique: true, sparse: true },
+    emailVerified: { type: Boolean, default: false },
+    sessionVersion: { type: Number, default: 0 },
     phoneVerified: { type: Boolean, default: false },
     accountType: {
       type: String,

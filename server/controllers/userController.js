@@ -10,13 +10,8 @@ const {
   transaction,
   assertFields,
 } = require("../utils/core");
-const passwordValid = (password) =>
-  typeof password === "string" &&
-  password.length >= 8 &&
-  password.length <= 72 &&
-  /[A-Z]/.test(password) &&
-  /[a-z]/.test(password) &&
-  /\d/.test(password);
+const { passwordValid } = require("../utils/password");
+const emailVerification = require("./emailVerificationController");
 const safeUser = (user) => ({
   _id: user._id,
   name: user.name,
@@ -26,6 +21,7 @@ const safeUser = (user) => ({
   profilePicture: user.profilePicture || "",
   role: user.role,
   phoneVerified: !!user.phoneVerified,
+  emailVerified: !!user.emailVerified,
   accountType: user.accountType || "registered",
 });
 const login = async (req, res) => {
@@ -53,7 +49,7 @@ const login = async (req, res) => {
     fail(401, "Email or password is incorrect.");
   res.json({
     user: safeUser(user),
-    token: jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    token: jwt.sign({ id: user._id, version: user.sessionVersion || 0 }, process.env.JWT_SECRET, {
       expiresIn: "8h",
     }),
   });
@@ -66,6 +62,7 @@ const createUser = async (req, res) => {
     "address",
     "password",
     "phoneVerificationTicket",
+    "emailVerificationTicket",
   ]);
   const { password, phoneVerificationTicket } = req.body;
   const normalized = normalizePhone(req.body.phone);
@@ -91,13 +88,15 @@ const createUser = async (req, res) => {
       409,
       "This mobile number already has an account. Sign in or contact the clinic.",
     );
-  const user = await User.create({
-    ...pick(req.body, ["name", "email", "phone", "address"]),
-    phone: normalized,
-    phoneNormalized: normalized,
-    phoneVerified: verified,
-    passwordHash: await bcrypt.hash(password, 12),
-    role: "OWNER",
+  const email = emailVerification.normalizeEmail(req.body.email);
+  const user = await transaction(async session => {
+    await emailVerification.consumeTicket(req.body.emailVerificationTicket, "register", email, null, session);
+    const [created] = await User.create([{
+      ...pick(req.body, ["name", "address"]), email,
+      phone: normalized, phoneNormalized: normalized, phoneVerified: verified,
+      emailVerified: true, passwordHash: await bcrypt.hash(password, 12), role: "OWNER",
+    }], { session });
+    return created;
   });
   res.status(201).json(safeUser(user));
 };
@@ -113,9 +112,18 @@ const updateUser = async (req, res) =>
         "phone",
         "address",
         "phoneVerificationTicket",
+        "emailVerificationTicket",
         "profilePicture",
       ]);
       const before = req.user.toObject();
+      if (req.body.email !== undefined) {
+        const email = emailVerification.normalizeEmail(req.body.email);
+        if (email !== req.user.email) {
+          await emailVerification.consumeTicket(req.body.emailVerificationTicket, "email-change", email, req.user, session);
+          req.user.emailVerified = true;
+        }
+        req.body.email = email;
+      }
       if (req.body.profilePicture !== undefined &&
           (typeof req.body.profilePicture !== "string" ||
            req.body.profilePicture.length > 400000 ||

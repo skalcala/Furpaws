@@ -15,14 +15,16 @@ const updateVaccination = async (req, res) =>
       assertFields(req.body, ["vaccine", "dateGiven", "nextDueDate"]);
       const record = await getDoc(Vaccination, req.params.id, session);
       const before = record.toObject();
+      if (req.body.nextDueDate === "") req.body.nextDueDate = null;
       Object.assign(
         record,
         pick(req.body, ["vaccine", "dateGiven", "nextDueDate"]),
       );
       if (
         Number.isNaN(new Date(record.dateGiven).valueOf()) ||
-        Number.isNaN(new Date(record.nextDueDate).valueOf()) ||
-        new Date(record.nextDueDate) <= new Date(record.dateGiven) ||
+        (record.nextDueDate != null &&
+          (Number.isNaN(new Date(record.nextDueDate).valueOf()) ||
+           new Date(record.nextDueDate) <= new Date(record.dateGiven))) ||
         new Date(record.dateGiven).toISOString().slice(0, 10) > today()
       )
         fail(400, "Use a valid date given and a later next due date.", {

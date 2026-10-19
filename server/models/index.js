@@ -2,6 +2,7 @@
 module.exports = {
   Counter: require("./Counter"),
   User: require("./User"),
+  EmailOtp: require("./EmailOtp"),
   OtpLimit: require("./OtpLimit"),
   Pet: require("./Pet"),
   Appointment: require("./Appointment"),

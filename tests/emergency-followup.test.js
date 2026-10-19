@@ -225,11 +225,14 @@ test("Phone/email sign-in, emergency existing/guest records, optional follow-up,
     await M.Pet.countDocuments({ name: duplicateBody.registration.name }),
     1,
   );
+  const registrationEmail = `phone-${Date.now()}@example.test`;
+  const emailVerificationTicket = await require("./helpers/email-client.cjs").emailTicket(registrationEmail);
   const registration = await request("/auth/register", {
     body: {
       name: "Phone uniqueness test",
       phone: "09179999003",
-      email: `phone-${Date.now()}@example.test`,
+      email: registrationEmail,
+      emailVerificationTicket,
       password: "PhoneTest123",
     },
   });

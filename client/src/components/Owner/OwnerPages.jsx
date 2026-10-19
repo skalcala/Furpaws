@@ -3,6 +3,7 @@ import ClinicDateTime from "../Shared/ClinicDateTime";
 import { appointmentId, appointmentServiceLabel, formatDateTime } from "../../api";
 import { screenFromPath } from "../../routes";
 import PictureUpload from "../Shared/PictureUpload";
+import EmailVerification from "../Auth/EmailVerification";
 import PhoneVerification from "../Auth/PhoneVerification";
 import OwnerLanding from "./OwnerLanding";
 import { NotificationFeed } from "../Shared/NotificationCenter";
@@ -246,6 +247,7 @@ export function OwnerDashboard() {
 export function OwnerProfile({ embedded = false }) {
   const { user, setUser } = useAuth();
   const configuration = useResource("/auth/config");
+  const [emailTicket, setEmailTicket] = useState("");
   const [phoneTicket, setPhoneTicket] = useState("");
   const [mode, setMode] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -253,6 +255,8 @@ export function OwnerProfile({ embedded = false }) {
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const profilePhone = Form.useWatch("phone", form);
+  const profileEmail = Form.useWatch("email", form);
+  const emailChanged = String(profileEmail || "").trim().toLowerCase() !== user.email;
   const submit = async (values) => {
     setBusy(true);
     setError("");
@@ -261,6 +265,7 @@ export function OwnerProfile({ embedded = false }) {
       else {
         const { data } = await api.patch("/users/me", {
           ...values,
+          ...(emailChanged && emailTicket ? { emailVerificationTicket: emailTicket } : {}),
           ...(phoneTicket ? { phoneVerificationTicket: phoneTicket } : {}),
         });
         setUser(data);
@@ -283,6 +288,7 @@ export function OwnerProfile({ embedded = false }) {
   };
   const open = (value) => {
     setMode(value);
+    setEmailTicket("");
     setError("");
     form.resetFields();
     if (value === "profile") form.setFieldsValue(user);
@@ -444,12 +450,16 @@ export function OwnerProfile({ embedded = false }) {
               >
                 <Input />
               </Form.Item>
+              {emailChanged && <>
+                <EmailVerification email={profileEmail} purpose="email-change" onVerified={setEmailTicket} disabled={!configuration.data.emailOtpEnabled} />
+                {!configuration.loading && !configuration.data.emailOtpEnabled && <Alert type="warning" message="Email changes require verification. Please contact the clinic if email delivery is unavailable." />}
+              </>}
               <Form.Item label="Address" name="address" rules={[{ max: 300 }]}>
                 <Input />
               </Form.Item>
             </>
           )}
-          <Button type="primary" htmlType="submit" loading={busy}>
+          <Button type="primary" htmlType="submit" loading={busy} disabled={mode === "profile" && emailChanged && !emailTicket}>
             Save Changes
           </Button>
         </Form>

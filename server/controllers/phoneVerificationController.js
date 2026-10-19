@@ -9,7 +9,7 @@ const configured = () =>
     process.env.TWILIO_AUTH_TOKEN &&
     process.env.TWILIO_VERIFY_SERVICE_SID
   );
-const configuration = (req, res) => res.json({ phoneOtpEnabled: configured() });
+const configuration = (req, res) => res.json({ phoneOtpEnabled: configured(), emailOtpEnabled: require("../utils/email").configured() });
 async function limit(phone, action, maximum, seconds) {
   const bucket = Math.floor(Date.now() / (seconds * 1000));
   const key = crypto

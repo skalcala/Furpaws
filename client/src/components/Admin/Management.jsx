@@ -896,7 +896,7 @@ export function Vaccinations() {
             form.setFieldsValue({
               ...record,
               dateGiven: record.dateGiven.slice(0, 10),
-              nextDueDate: record.nextDueDate.slice(0, 10),
+              nextDueDate: record.nextDueDate?.slice(0, 10) || "",
             });
             setEditing(record);
             setError("");
@@ -914,15 +914,15 @@ export function Vaccinations() {
         <Panel title="Upcoming due">
           <DataTable
             data={[...records.data].sort(
-              (a, b) => new Date(a.nextDueDate) - new Date(b.nextDueDate),
+              (a, b) => (a.nextDueDate ? new Date(a.nextDueDate).valueOf() : Infinity) - (b.nextDueDate ? new Date(b.nextDueDate).valueOf() : Infinity),
             )}
             columns={columns}
           />
         </Panel>
       </RequestState>
       <Note>
-        Completing a vaccination visit books the next due date for the owner and
-        sends them a notification.
+        When a next date is entered while completing a vaccination visit, the next
+        visit is booked when a slot is available and the owner is notified.
       </Note>
       <Modal
         open={!!editing}
@@ -953,13 +953,12 @@ export function Vaccinations() {
           </Form.Item>
           <Form.Item
             name="nextDueDate"
-            label="Next date given"
+            label="Next date given (optional)"
             dependencies={["dateGiven"]}
             rules={[
-              { required: true },
               ({ getFieldValue }) => ({
                 validator: (_, value) =>
-                  value > getFieldValue("dateGiven")
+                  !value || value > getFieldValue("dateGiven")
                     ? Promise.resolve()
                     : Promise.reject(
                         new Error("Next date given must follow date given."),

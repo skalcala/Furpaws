@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Alert, Button, Input, Form } from "antd";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { api, errorMessage } from "../../api";
 import PhoneVerification from "./PhoneVerification";
 import { useResource } from "../Shared/UI";
-import { Logo } from "../Shared/Layout";
+import AuthShell from "./AuthShell";
+import EmailVerification from "./EmailVerification";
+import ForgotPassword from "./ForgotPassword";
 export default function Login() {
   const [searchParams, setSearchParams] = useSearchParams();
   const register = searchParams.get("mode") === "register";
@@ -13,6 +15,8 @@ export default function Login() {
     setSearchParams(value ? { mode: "register" } : {});
   const [form] = Form.useForm();
   const phone = Form.useWatch("phone", form);
+  const email = Form.useWatch("email", form);
+  const [emailTicket, setEmailTicket] = useState("");
   const configuration = useResource("/auth/config");
   const [ticket, setTicket] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,8 +31,10 @@ export default function Login() {
       if (register) {
         await api.post("/auth/register", {
           ...values,
+          emailVerificationTicket: emailTicket,
           ...(ticket ? { phoneVerificationTicket: ticket } : {}),
         });
+        form.resetFields(); setEmailTicket(""); setTicket("");
         setRegister(false);
         setSuccess("Account created. Sign in to book your first appointment.");
       } else {
@@ -41,25 +47,9 @@ export default function Login() {
       setBusy(false);
     }
   };
+  if (searchParams.get("mode") === "forgot") return <ForgotPassword onBack={() => { setSearchParams({}); setError(""); setSuccess(""); form.resetFields(); }} />;
   return (
-    <main
-      className={`auth-page auth-reference${register ? " is-register" : ""}`}
-    >
-      <div className="auth-split-card">
-        <section className="auth-form-side">
-          <Link className="auth-back-link" to="/">
-            ← Back to FurPaws
-          </Link>
-          <div className="auth-card">
-            <Logo />
-            <h1>
-              {register ? "Create an owner account" : "Welcome to FurPaws"}
-            </h1>
-            <p>
-              {register
-                ? "A healthier journey starts with your account."
-                : "Sign in to continue your pet’s care journey."}
-            </p>
+    <AuthShell register={register} title={register ? "Create an owner account" : "Welcome to FurPaws"} description={register ? "A healthier journey starts with your account." : "Sign in to continue your pet’s care journey."}>
             {error && <Alert type="error" showIcon message={error} />}{" "}
             {success && <Alert type="success" message={success} />}
             <Form
@@ -106,8 +96,7 @@ export default function Login() {
                   ) : (
                     !configuration.loading && (
                       <p className="muted">
-                        SMS verification is currently unavailable. You can
-                        continue with email and password.
+                        SMS verification is currently unavailable.
                       </p>
                     )
                   )}
@@ -133,6 +122,10 @@ export default function Login() {
                   }
                 />
               </Form.Item>
+              {register && <>
+                <EmailVerification email={email} onVerified={setEmailTicket} disabled={!configuration.data.emailOtpEnabled} />
+                {!configuration.loading && !configuration.data.emailOtpEnabled && <Alert type="warning" message="Email verification is currently unavailable. Please contact the clinic." />}
+              </>}
               <Form.Item
                 label="Password"
                 name="password"
@@ -161,12 +154,14 @@ export default function Login() {
                 disabled={
                   register &&
                   (configuration.loading ||
+                    !configuration.data.emailOtpEnabled || !emailTicket ||
                     (configuration.data.phoneOtpEnabled && !ticket))
                 }
               >
                 {register ? "Create account" : "Sign in"}
               </Button>
             </Form>
+            {!register && <Button type="link" onClick={() => { setSearchParams({ mode: "forgot" }); setError(""); setSuccess(""); }}>Forgot password?</Button>}
             <Button
               type="link"
               onClick={() => {
@@ -174,6 +169,7 @@ export default function Login() {
                 setError("");
                 setSuccess("");
                 setTicket("");
+                setEmailTicket("");
                 form.resetFields();
               }}
             >
@@ -182,30 +178,7 @@ export default function Login() {
                 : "New pet owner? Create an account"}
             </Button>
             <NoteDemo />
-          </div>
-          <p className="auth-form-footnote">
-            Your pets. Their health. One place.
-          </p>
-        </section>
-        <figure className="auth-photo-side">
-          <img
-            src="/assets/auth/pug-portrait.avif"
-            alt="Black pug wearing a striped shirt against a red background"
-            fetchPriority="high"
-          />
-          <figcaption>
-            Photo by{" "}
-            <a
-              href="https://unsplash.com/photos/black-pug-wearing-striped-apparel-DziZIYOGAHc"
-              target="_blank"
-              rel="noreferrer"
-            >
-              charlesdeluvio / Unsplash
-            </a>
-          </figcaption>
-        </figure>
-      </div>
-    </main>
+    </AuthShell>
   );
 }
 function NoteDemo() {

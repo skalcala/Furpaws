@@ -13,6 +13,7 @@ const auth = async (req, res, next) => {
     }
     req.user = await User.findById(payload.id);
     if (!req.user || req.user.accountType === "guest") fail(401, "Account not found. Please sign in again.");
+    if ((payload.version || 0) !== (req.user.sessionVersion || 0)) fail(401, "Your password was reset. Please sign in again.");
     next();
   } catch (error) {
     next(error);

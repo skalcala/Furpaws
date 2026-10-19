@@ -136,8 +136,8 @@ export default function Consultation() {
       ...(!vaccination && !values.prescription.trim()
         ? { prescription: "Enter the prescription, or N/A if none." }
         : {}),
-      ...(vaccination &&
-      (!values.nextDueDate || values.nextDueDate <= values.dateGiven)
+      ...(vaccination && values.nextDueDate &&
+      values.nextDueDate <= values.dateGiven
         ? { nextDueDate: "Choose a later next due date." }
         : {}),
     };
@@ -363,9 +363,8 @@ export default function Consultation() {
                         />
                       </Field>
                       <Field
-                        label="Next date given"
+                        label="Next date given (optional)"
                         name="nextDueDate"
-                        required
                         errors={errors}
                       >
                         <Input
@@ -378,8 +377,8 @@ export default function Consultation() {
                           }
                         />
                         <small className="muted">
-                          The owner is notified and the next visit is booked
-                          automatically.
+                          Leave blank if no next dose is planned. If you enter a date,
+                          the owner is notified and the next visit is booked automatically when a slot is available.
                         </small>
                       </Field>
                     </div>

@@ -6,6 +6,10 @@ const appointments = require("../controllers/appointmentController");
 const consultations = require("../controllers/consultationController");
 const resources = require("../controllers/resourceController");
 const router = express.Router();
+const emailVerification = require("../controllers/emailVerificationController");
+router.post("/auth/email/send", emailVerification.send);
+router.post("/auth/email/check", emailVerification.check);
+router.post("/auth/password/reset", emailVerification.resetPassword);
 const phoneVerification = require("../controllers/phoneVerificationController");
 router.get("/auth/config", phoneVerification.configuration);
 router.post("/auth/phone/send", phoneVerification.send);
@@ -17,6 +21,8 @@ router.get("/pet-options", async (req, res) =>
   res.json(await require("../utils/petOptions").getBreeds(req.query.species)),
 );
 router.get("/users/me", users.getMe);
+router.post("/users/me/email/send", emailVerification.sendChange);
+router.post("/users/me/email/check", emailVerification.checkChange);
 router.patch("/users/me", users.updateUser);
 router.post("/users/me/password", users.changePassword);
 router.get("/users", role("ADMIN"), users.getUsers);

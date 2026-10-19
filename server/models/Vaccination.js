@@ -12,7 +12,7 @@ const VaccinationSchema = new mongoose.Schema(
       required: true,
     },
     dateGiven: { type: Date, required: true },
-    nextDueDate: { type: Date, required: true },
+    nextDueDate: { type: Date, default: null },
   },
   { timestamps: true, strict: "throw" },
 );

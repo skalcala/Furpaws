@@ -236,3 +236,9 @@
 .auth-reference .auth-card > .logo { max-width: 240px; }
 .auth-reference .ant-input, .auth-reference .ant-input-affix-wrapper { min-height: 44px; border-radius: 12px; }
 .auth-reference .ant-btn-primary { min-height: 44px; border-radius: 12px; }
+
+.email-verification { display: grid; gap: 12px; margin: 0 0 20px; min-width: 0; }
+.email-verification .row { gap: 10px; flex-wrap: wrap; }
+.email-verification .row .ant-input { flex: 1 1 140px; width: auto; min-width: 0; }
+.email-verification .muted { margin: 0; font-size: 12px; line-height: 1.6; }
+.auth-card .ant-alert { margin-bottom: 14px; }

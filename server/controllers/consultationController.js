@@ -142,18 +142,18 @@ const completeConsultation = async (req, res) =>
         fail(400, "Vaccination details are required.");
       if (vaccination) {
         assertFields(vaccination, ["vaccine", "dateGiven", "nextDueDate"]);
+        if (vaccination.nextDueDate === "" || vaccination.nextDueDate == null) vaccination.nextDueDate = null;
         if (
           !["Rabies", "DHPP", "FVRCP"].includes(vaccination.vaccine) ||
           !vaccination.dateGiven ||
-          !vaccination.nextDueDate ||
           Number.isNaN(Date.parse(vaccination.dateGiven)) ||
-          Number.isNaN(Date.parse(vaccination.nextDueDate)) ||
           vaccination.dateGiven > appointment.date ||
-          vaccination.nextDueDate <= vaccination.dateGiven
+          (vaccination.nextDueDate !== null &&
+            (Number.isNaN(Date.parse(vaccination.nextDueDate)) || vaccination.nextDueDate <= vaccination.dateGiven))
         )
           fail(
             400,
-            "Use a valid vaccine, a date given no later than the visit date, and a later due date.",
+            "Use a valid vaccine, a date given no later than the visit date, and, if provided, a later due date.",
             { nextDueDate: "Next due date must be after date given." },
           );
       }
@@ -220,7 +220,7 @@ const completeConsultation = async (req, res) =>
         await consultation.save({ session });
         await audit(req.user, "Book follow-up", "appointments", followUpAppointment._id, undefined, followUpAppointment.toObject(), session);
       }
-      if (vaccination) {
+      if (vaccination?.nextDueDate) {
         const time = await findOpenSlot(
           vaccination.nextDueDate,
           appointment.time,
@@ -294,19 +294,19 @@ const completeConsultation = async (req, res) =>
           title: "Follow-up appointment booked",
           message: `${pet.name}'s follow-up is approved for ${followUpAppointment.date} at ${followUpAppointment.time}. ${followUp.purpose}`.slice(0, 2000),
         }, session);
-        await notify(
+        if (!vaccination || vaccination.nextDueDate || followUp.enabled) await notify(
           {
             owner: owner._id,
             pet: pet._id,
             ...(nextAppointment ? { appointment: nextAppointment._id } : {}),
-            title: vaccination
+            title: vaccination?.nextDueDate
               ? nextAppointment
                 ? "Next vaccination scheduled"
                 : "Vaccination due soon"
               : followUp.enabled
                 ? "Follow-up care plan"
                 : "Medical care reminder",
-            message: (vaccination
+            message: (vaccination?.nextDueDate
               ? nextAppointment
                 ? `${pet.name} · ${vaccination.vaccine} booster is booked for ${nextAppointment.date} at ${nextAppointment.time}. See My Appointments to review or reschedule.`
                 : `${pet.name} · ${vaccination.vaccine} next due ${vaccination.nextDueDate}. The next visit was not booked automatically. Review your existing appointments or arrange another available date.`
@@ -315,7 +315,7 @@ const completeConsultation = async (req, res) =>
                 : `${pet.name}: Follow the saved care instructions. ${prescription ? `Prescription: ${prescription}. ` : ""}${notes || ""}`).slice(0, 2000),
             dueAt: followUp.enabled
               ? new Date(`${followUp.date}T00:00:00+08:00`)
-              : vaccination
+              : vaccination?.nextDueDate
                 ? new Date(vaccination.nextDueDate)
                 : new Date(),
           },

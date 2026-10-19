@@ -21,7 +21,8 @@
     "demo": "node scripts/demo.js",
     "test:workflow": "node scripts/test-workflow.cjs",
     "test:ui:workflow": "node tests/ui-workflow.cjs",
-    "test:ui:portal": "node tests/portal-browser.cjs"
+    "test:ui:portal": "node tests/portal-browser.cjs",
+    "test:ui:auth": "node tests/email-auth-browser.cjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.0",

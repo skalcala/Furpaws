@@ -20,6 +20,39 @@ test('Future visit dates and atomic follow-up reservations, including vaccinatio
   const payload={appointment:second._id,weight:5,symptoms:'Test symptoms',diagnosis:'Test findings',prescription:'N/A',followUp:{enabled:true,date:laterDate,time:'10:00',purpose:'Recovery check'}};
   const blocked=await request('/consultations/complete',admin,payload);assert.equal(blocked.status,409);assert.equal(await Consultation.countDocuments({appointment:second._id}),0);assert.equal(await Bill.countDocuments({appointment:second._id}),0);assert.equal((await Appointment.findById(second._id)).status,'Approved');
   const saved=await request('/consultations/complete',admin,{...payload,followUp:{...payload.followUp,time:'10:30'}});assert.equal(saved.status,201);assert.equal(saved.data.followUpAppointment.time,'10:30');assert.equal((await Service.findById(saved.data.followUpAppointment.service)).type,'Consultation');
+  // Vaccination can finish without a booster date; providing one still books it.
+  for (const [index, optionalDate] of ['', undefined, null].entries()) {
+    const visit = await book(owner, ['11:00', '11:30', '12:00'][index], vaccine, 'optional date '+index);
+    const base = { appointment: visit._id, weight: 6, vaccination: { vaccine: 'Rabies', dateGiven: date } };
+    if (optionalDate !== undefined) base.vaccination.nextDueDate = optionalDate;
+    if (index === 0) {
+      const invalid = await request('/consultations/complete', admin, { ...base, vaccination: { ...base.vaccination, nextDueDate: date } });
+      assert.equal(invalid.status, 400);
+      assert.equal(await Consultation.countDocuments({ appointment: visit._id }), 0);
+    }
+    const completed = await request('/consultations/complete', admin, base);
+    assert.equal(completed.status, 201); assert.equal(completed.data.nextAppointment, null);
+    const record = await Vaccination.findOne({ consultation: completed.data.consultation._id });
+    assert.equal(record.nextDueDate, null);
+    assert.equal(await Appointment.countDocuments({ pet: visit.pet }), 1);
+    const notices = (await request('/notifications', owner)).data.filter(n => String(n.pet) === String(visit.pet));
+    assert(notices.some(n => n.title === 'Medical records available'));
+    assert(!notices.some(n => ['Vaccination due soon', 'Next vaccination scheduled'].includes(n.title)));
+    // A blank due date must also remain editable in vaccination management.
+    const edit = await fetch(process.env.API_BASE + '/vaccinations/' + record._id, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer '+admin },
+      body: JSON.stringify({ dateGiven: '2025-01-01', nextDueDate: '' }),
+    });
+    assert.equal(edit.status, 200); assert.equal((await edit.json()).nextDueDate, null);
+  }
+  const booster = await book(owner, '12:30', vaccine, 'auto booster');
+  const boosterDone = await request('/consultations/complete', admin, { appointment: booster._id, weight: 6, vaccination: { vaccine: 'DHPP', dateGiven: date, nextDueDate: laterDate } });
+  assert.equal(boosterDone.status, 201); assert(boosterDone.data.nextAppointment);
+  assert.equal(boosterDone.data.nextAppointment.date, laterDate);
+  assert.equal(boosterDone.data.nextAppointment.status, 'Approved');
+  assert.equal(String(boosterDone.data.nextAppointment.owner), String(booster.owner));
+  const boosterNotices = (await request('/notifications', owner)).data;
+  assert(boosterNotices.some(n => n.title === 'Next vaccination scheduled' && String(n.appointment) === boosterDone.data.nextAppointment._id));
   const notes=(await request('/notifications',owner)).data;assert(notes.some(n=>String(n.appointment)===saved.data.followUpAppointment._id&&n.title==='Follow-up appointment booked'));
  }finally{await mongoose.disconnect()}
 });
